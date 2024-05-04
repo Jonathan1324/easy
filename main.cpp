@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 using namespace std;
 
@@ -82,6 +83,7 @@ int main(int argc, char* argv[]) {
 void checkForCommand(string str) {
     string substring = "";
     string String = "";
+    vector<string> strings;
 
     bool inString = false;
 
@@ -89,6 +91,8 @@ void checkForCommand(string str) {
         if(inString){
             if (str[i] == '\'') {
                 inString = false;
+                strings.push_back(String);
+                String = "";
                 substring += "###STRING_REPLACEMENT###";
             } else {
                 if(str[i] == '\\' && str[i+1] == 'n') {
@@ -111,6 +115,6 @@ void checkForCommand(string str) {
     }
 
     if(substring == "print(###STRING_REPLACEMENT###);") {
-        cout << String + "\n";
+        cout << strings.at(0) + "\n";
     }
 }
