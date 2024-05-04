@@ -1,2 +1,2 @@
 # easy
-A simple programming language
+A programming language
