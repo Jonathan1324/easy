@@ -10,6 +10,9 @@ class Error {
 public:
     static const Error e1;
     static const Error e2;
+    static const Error e3;
+    static const Error e4;
+    static const Error e5;
 
     Error(int code, const std::string& message) : errorCode(code), errorMessage(message) {}
     
@@ -20,6 +23,10 @@ public:
         std::cout << errorMessage << "\nEXITCODE ::: " << "E:" << errorCode << std::endl;
     }
 
+    void printErrorMessageAtLine(int line) const {
+        std::cout << "Line : " << line << "\n" << errorMessage << "\nEXITCODE ::: " << "E:" << errorCode << std::endl;
+    }
+
 private:
     int errorCode;
     std::string errorMessage;
@@ -27,8 +34,11 @@ private:
 
 const Error Error::e1 = Error(1, "Not enough Arguments");
 const Error Error::e2 = Error(2, "File not found");
+const Error Error::e3 = Error(3, "Not enough Arguments");
+const Error Error::e4 = Error(4, "Too many Arguments");
+const Error Error::e5 = Error(5, "Argument doesn't have the right type");
 
-void checkForCommand(string str);
+void checkForCommand(string str, int line);
 
 int main(int argc, char* argv[]) {
 
@@ -48,6 +58,7 @@ int main(int argc, char* argv[]) {
         }
     } else {
         Error::e2.printErrorMessage();
+        return 0;
     }
 
     string substring = "";
@@ -68,22 +79,25 @@ int main(int argc, char* argv[]) {
         }
     }
     
+    int j = 1;
 
     for (int i = 0; i < code.length(); i++) {
         substring += code[i];
 
         if (code.substr(i, 1) == ";") {
-            checkForCommand(substring);
+            checkForCommand(substring, j);
             substring = "";
+            j++;
         }
     }
     return 0;
 }
 
-void checkForCommand(string str) {
+void checkForCommand(string str, int line) {
     string substring = "";
     string String = "";
     vector<string> strings;
+    int Arguments;
 
     bool inString = false;
 
@@ -93,7 +107,7 @@ void checkForCommand(string str) {
                 inString = false;
                 strings.push_back(String);
                 String = "";
-                substring += "###STRING_REPLACEMENT###";
+                substring += "###STRING_ARGUMENT###";
             } else {
                 if(str[i] == '\\' && str[i+1] == 'n') {
                     String += '\n';
@@ -114,7 +128,13 @@ void checkForCommand(string str) {
         }
     }
 
-    if(substring == "print(###STRING_REPLACEMENT###);") {
+    if(substring == "print(###STRING_ARGUMENT###);") {
         cout << strings.at(0) + "\n";
+    } else if (substring == "print();") {
+        Error::e3.printErrorMessageAtLine(line);
+    } else if (Arguments > 1) {
+        Error::e4.printErrorMessageAtLine(line);
+    } else {
+        Error::e5.printErrorMessageAtLine(line);
     }
 }
