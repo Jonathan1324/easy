@@ -70,6 +70,8 @@ int main(int argc, char* argv[]) {
             if (code[i] == find) {
                 if (find == '\"') {
                     code[i] = '\'';
+                } else if (find == '\n') {
+                    code[i] = ';';
                 } else {
                     code.erase(i, 1);
                     i--;
@@ -90,6 +92,8 @@ int main(int argc, char* argv[]) {
             j++;
         }
     }
+    checkForCommand(substring.substr(0, substring.size()-1) + ";", j);
+
     return 0;
 }
 
