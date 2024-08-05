@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "utils.cpp"
 
 using namespace std;
 
@@ -41,7 +42,8 @@ const Error Error::e4 = Error(4, "Too many Arguments");
 const Error Error::e5 = Error(5, "Argument doesn't have the right type");
 const Error Error::e6 = Error(6, "Not allowed characters");
 
-void checkForCommand(string str, int line);
+void checkForCommand(string, int);
+bool checkForArguments(int, int, int);
 
 int main(int argc, char* argv[]) {
 
@@ -111,6 +113,8 @@ void checkForCommand(string str, int line) {
     bool inString = false;
     bool inNumber = false;
 
+    const char* function = "";
+
     for (int i = 0; i < str.length(); i++)
     {
         if(inString){
@@ -144,11 +148,16 @@ void checkForCommand(string str, int line) {
                     inNumber = false;
                     ints.push_back(1);
                     intStr = "";
-                    substring += "###INT_ARGUMENT###" + str[i];
+                    substring += "###INT_ARGUMENT###";
+                    substring += str[i];
                     arguments++;
                 }
             }
         } else {
+
+            if(str[i] == '(' && function == "") {
+                function = substring.c_str();
+            }
 
             if(str[i] != ' ') {
                 if (str[i] == '\'') {
@@ -162,15 +171,31 @@ void checkForCommand(string str, int line) {
         }
     }
 
-    cout << substring;
+    switch (str2int(function))
+    {
+    case str2int("print"):
+        if(checkForArguments(arguments, 1, line)) {
+            if(substring == "print(###STRING_ARGUMENT###);") {
+                cout << strings.at(0) + "\n";
+            } else {
+                Error::e5.printErrorMessageAtLine(line);
+            }
+        }
+        break;
+    
+    default:
+        break;
+    }
+}
 
-    if(substring == "print(###STRING_ARGUMENT###);") {
-        cout << strings.at(0) + "\n";
-    } else if (substring == "print();") {
+bool checkForArguments(int arguments, int goalArguments, int line) {
+    if(goalArguments == arguments) {
+        return true;
+    } else if (goalArguments > arguments) {
         Error::e3.printErrorMessageAtLine(line);
-    } else if (arguments > 1) {
-        Error::e4.printErrorMessageAtLine(line);
+        return false;
     } else {
-        Error::e5.printErrorMessageAtLine(line);
+        Error::e4.printErrorMessageAtLine(line);
+        return false;
     }
 }
