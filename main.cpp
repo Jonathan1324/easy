@@ -113,7 +113,7 @@ void checkForCommand(string str, int line) {
     bool inString = false;
     bool inNumber = false;
 
-    const char* function = "";
+    string function = "";
 
     for (int i = 0; i < str.length(); i++)
     {
@@ -134,12 +134,12 @@ void checkForCommand(string str, int line) {
             }
         } else if(inNumber) {
             if(str[i] != ' ') {
-                if(str[i] == '1' || str[i] == '2' || str[i] == '3' || str[i] == '4' || str[i] == '5' || str[i] == '6' || str[i] == '7' || str[i] == '8' || str[i] == '9' || str[i] == '0') {
+                if(isdigit(str[i])) {
                     intStr += str[i];
                 } else if(str[i] == ',' || str[i] == ')') {
                     for (size_t j = 0; j < intStr.length(); j++)
                     {
-                        if(!(str[i] == '1' || str[i] == '2' || str[i] == '3' || str[i] == '4' || str[i] == '5' || str[i] == '6' || str[i] == '7' || str[i] == '8' || str[i] == '9' || str[i] == '0')) {
+                        if(!(isdigit(str[i]))) {
                             Error::e6.printErrorMessageAtLine(line);
                             return;
                         }
@@ -156,13 +156,13 @@ void checkForCommand(string str, int line) {
         } else {
 
             if(str[i] == '(' && function == "") {
-                function = substring.c_str();
+                function = substring;
             }
 
             if(str[i] != ' ') {
                 if (str[i] == '\'') {
                     inString = true;
-                } else if(str[i] == '1' || str[i] == '2' || str[i] == '3' || str[i] == '4' || str[i] == '5' || str[i] == '6' || str[i] == '7' || str[i] == '8' || str[i] == '9' || str[i] == '0') {
+                } else if(isdigit(str[i])) {
                     inNumber = true;
                 } else {
                     substring += str[i];
@@ -171,9 +171,7 @@ void checkForCommand(string str, int line) {
         }
     }
 
-    cout << function;
-
-    switch (str2int(function))
+    switch (str2int(function.c_str()))
     {
     case str2int("print"):
         if(checkForArguments(arguments, 1, line)) {
