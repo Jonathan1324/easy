@@ -171,6 +171,8 @@ void checkForCommand(string str, int line) {
         }
     }
 
+    cout << function;
+
     switch (str2int(function))
     {
     case str2int("print"):
