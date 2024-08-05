@@ -13,6 +13,7 @@ public:
     static const Error e3;
     static const Error e4;
     static const Error e5;
+    static const Error e6;
 
     Error(int code, const std::string& message) : errorCode(code), errorMessage(message) {}
     
@@ -24,6 +25,7 @@ public:
     }
 
     void printErrorMessageAtLine(int line) const {
+        std::cout << "\n";
         std::cout << "Line : " << line << "\n" << errorMessage << "\nEXITCODE ::: " << "E:" << errorCode << std::endl;
     }
 
@@ -37,6 +39,7 @@ const Error Error::e2 = Error(2, "File not found");
 const Error Error::e3 = Error(3, "Not enough Arguments");
 const Error Error::e4 = Error(4, "Too many Arguments");
 const Error Error::e5 = Error(5, "Argument doesn't have the right type");
+const Error Error::e6 = Error(6, "Not allowed characters");
 
 void checkForCommand(string str, int line);
 
@@ -100,18 +103,23 @@ int main(int argc, char* argv[]) {
 void checkForCommand(string str, int line) {
     string substring = "";
     string String = "";
+    string intStr = "";
     vector<string> strings;
-    int Arguments;
+    vector<int> ints;
+    int arguments = 0;
 
     bool inString = false;
+    bool inNumber = false;
 
-    for (int i = 0; i < str.length(); i++) {
+    for (int i = 0; i < str.length(); i++)
+    {
         if(inString){
             if (str[i] == '\'') {
                 inString = false;
                 strings.push_back(String);
                 String = "";
                 substring += "###STRING_ARGUMENT###";
+                arguments++;
             } else {
                 if(str[i] == '\\' && str[i+1] == 'n') {
                     String += '\n';
@@ -120,11 +128,33 @@ void checkForCommand(string str, int line) {
                     String += str[i];
                 }
             }
+        } else if(inNumber) {
+            if(str[i] != ' ') {
+                if(str[i] == '1' || str[i] == '2' || str[i] == '3' || str[i] == '4' || str[i] == '5' || str[i] == '6' || str[i] == '7' || str[i] == '8' || str[i] == '9' || str[i] == '0') {
+                    intStr += str[i];
+                } else if(str[i] == ',' || str[i] == ')') {
+                    for (size_t j = 0; j < intStr.length(); j++)
+                    {
+                        if(!(str[i] == '1' || str[i] == '2' || str[i] == '3' || str[i] == '4' || str[i] == '5' || str[i] == '6' || str[i] == '7' || str[i] == '8' || str[i] == '9' || str[i] == '0')) {
+                            Error::e6.printErrorMessageAtLine(line);
+                            return;
+                        }
+                    }
+
+                    inNumber = false;
+                    ints.push_back(1);
+                    intStr = "";
+                    substring += "###INT_ARGUMENT###" + str[i];
+                    arguments++;
+                }
+            }
         } else {
 
-            if(str[i] != ' '){
+            if(str[i] != ' ') {
                 if (str[i] == '\'') {
                     inString = true;
+                } else if(str[i] == '1' || str[i] == '2' || str[i] == '3' || str[i] == '4' || str[i] == '5' || str[i] == '6' || str[i] == '7' || str[i] == '8' || str[i] == '9' || str[i] == '0') {
+                    inNumber = true;
                 } else {
                     substring += str[i];
                 }
@@ -132,11 +162,13 @@ void checkForCommand(string str, int line) {
         }
     }
 
+    cout << substring;
+
     if(substring == "print(###STRING_ARGUMENT###);") {
         cout << strings.at(0) + "\n";
     } else if (substring == "print();") {
         Error::e3.printErrorMessageAtLine(line);
-    } else if (Arguments > 1) {
+    } else if (arguments > 1) {
         Error::e4.printErrorMessageAtLine(line);
     } else {
         Error::e5.printErrorMessageAtLine(line);
