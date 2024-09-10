@@ -1,2 +1,2 @@
-g++ main.cpp
-a.exe code.eas
+call .\build.bat
+main.exe code.eas

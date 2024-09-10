@@ -3,9 +3,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "utils.cpp"
-
-using namespace std;
+#include "c++\utils.cpp"
+#include "c++\string.cpp"
 
 class Error {
 public:
@@ -42,33 +41,35 @@ const Error Error::e4 = Error(4, "Too many Arguments");
 const Error Error::e5 = Error(5, "Argument doesn't have the right type");
 const Error Error::e6 = Error(6, "Not allowed characters");
 
-void checkForCommand(string, int);
+void checkForCommand(std::string, int);
 bool checkForArguments(int, int, int);
 
 int main(int argc, char* argv[]) {
 
-    string code = "";
+    std::string code = "";
 
     if (argc < 2) {
         Error::e1.printErrorMessage();
         return 1;
     }
 
-    ifstream myfile (argv[1]);
+    std::ifstream file (argv[1]);
 
-    if ( myfile.is_open() ) {
-        while ( myfile.good() ) {
-            char mychar = myfile.get();
-            code += mychar;
+    if ( file.is_open() ) {
+        while ( file.good() ) {
+            char Char = file.get();
+            code += Char;
         }
     } else {
         Error::e2.printErrorMessage();
         return 0;
     }
 
-    string substring = "";
+    file.close();
 
-    string findChars = "\n\"";
+    std::string substring = "";
+
+    std::string findChars = "\n\"";
 
     for (size_t i = 0; i < code.size(); i++) {
         for (char find : findChars) {
@@ -102,28 +103,35 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-void checkForCommand(string str, int line) {
-    string substring = "";
-    string String = "";
-    string intStr = "";
-    vector<string> strings;
-    vector<int> ints;
+void checkForCommand(std::string str, int line) {
+    std::string substring = "";
+    std::string String = "";
+    std::string intStr = "";
+    std::vector<std::string> strings;
+    std::vector<int> ints;
     int arguments = 0;
 
     bool inString = false;
     bool inNumber = false;
 
-    string function = "";
+    std::string function = "";
+    bool isConcatenating = false;
+    bool icString = false;
 
     for (int i = 0; i < str.length(); i++)
     {
         if(inString){
             if (str[i] == '\'') {
                 inString = false;
-                strings.push_back(String);
+                if (isConcatenating && !strings.empty()) {
+                    strings.back() += String;  // Concatenate to the previous string
+                } else {
+                    strings.push_back(String);  // Push new string if not concatenating
+                    substring += "###STRING_ARGUMENT###";
+                    arguments++;
+                }
                 String = "";
-                substring += "###STRING_ARGUMENT###";
-                arguments++;
+                icString = true;
             } else {
                 if(str[i] == '\\' && str[i+1] == 'n') {
                     String += '\n';
@@ -137,20 +145,24 @@ void checkForCommand(string str, int line) {
                 if(isdigit(str[i])) {
                     intStr += str[i];
                 } else if(str[i] == ',' || str[i] == ')') {
-                    for (size_t j = 0; j < intStr.length(); j++)
-                    {
-                        if(!(isdigit(str[i]))) {
+                    for (size_t j = 0; j < intStr.length(); j++) {
+                        if(!(isdigit(intStr[j]))) {
                             Error::e6.printErrorMessageAtLine(line);
                             return;
                         }
                     }
 
+                    if (isConcatenating && icString) {
+                        strings.back() += intStr;
+                    } else {
+                        ints.push_back(std::stoi(intStr));
+                        substring += "###INT_ARGUMENT###";
+                        arguments++;
+                    }
+
                     inNumber = false;
-                    ints.push_back(1);
-                    intStr = "";
-                    substring += "###INT_ARGUMENT###";
                     substring += str[i];
-                    arguments++;
+                    intStr = "";
                 }
             }
         } else {
@@ -164,6 +176,11 @@ void checkForCommand(string str, int line) {
                     inString = true;
                 } else if(isdigit(str[i])) {
                     inNumber = true;
+                    i -= 1;
+                } else if (str[i] == '+') {
+                    isConcatenating = true;  // Set flag when + is encountered
+                } else if (str[i] == ',') {
+                    isConcatenating = false;
                 } else {
                     substring += str[i];
                 }
@@ -176,7 +193,10 @@ void checkForCommand(string str, int line) {
     case str2int("print"):
         if(checkForArguments(arguments, 1, line)) {
             if(substring == "print(###STRING_ARGUMENT###);") {
-                cout << strings.at(0) + "\n";
+                std::cout << strings.at(0) + "\n";
+            } else if (substring == "print(###INT_ARGUMENT###);") {
+                std::cout << ints.at(0);
+                std::cout << "\n";
             } else {
                 Error::e5.printErrorMessageAtLine(line);
             }
