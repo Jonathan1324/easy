@@ -7,6 +7,7 @@ const Error Error::e3 = Error(3, "Not enough Arguments");
 const Error Error::e4 = Error(4, "Too many Arguments");
 const Error Error::e5 = Error(5, "Argument doesn't have the right type");
 const Error Error::e6 = Error(6, "Not allowed characters");
+const Error Error::e7 = Error(7, "Arithmetical Error");
 
 
 Error::Error(int code, const std::string& message) : errorCode(code), errorMessage(message) {}

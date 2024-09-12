@@ -1,2 +1,2 @@
-print("Number turns to a string: 1 -- " + 1)
-print(1 + 1)
+print("1 + 1 * 2 = " + 1 + 1 * 2)
+print(-5)

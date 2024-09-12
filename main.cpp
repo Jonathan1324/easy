@@ -59,12 +59,20 @@ int main(int argc, char* argv[]) {
             j++;
         }
     }
-    checkForCommand(substring.substr(0, substring.size()-1) + ";", j);
+
+    if (substring.back() != ')') {
+        substring.pop_back();
+    }
+
+    std::string str = substring.substr(0, substring.size()) + ";";
+
+    checkForCommand(str, j);
 
     return 0;
 }
 
 void checkForCommand(std::string str, int line) {
+
     std::string substring = "";
     std::string String = "";
     std::string intStr = "";
@@ -79,7 +87,10 @@ void checkForCommand(std::string str, int line) {
     bool isConcatenating = false;
     bool icString = false;
     bool icInt = false;
-    std::string icIntOperator = "";
+
+    bool setFunction = false;
+
+    int brackets = 0;
 
     for (int i = 0; i < str.length(); i++)
     {
@@ -108,31 +119,42 @@ void checkForCommand(std::string str, int line) {
                 if(isdigit(str[i]) || str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/') {
                     intStr += str[i];
                 } else if(str[i] == ',' || str[i] == ')') {
-                    for (size_t j = 0; j < intStr.length(); j++) {
-                        if(!(isdigit(intStr[j]) || intStr[j] == '+' || intStr[j] == '-' || intStr[j] == '*' || intStr[j] == '/')) {
-                            Error::e6.printErrorMessageAtLine(line);
-                            return;
+
+                    if (true) {
+                        for (size_t j = 0; j < intStr.length(); j++) {
+                            if(!(isdigit(intStr[j]) || intStr[j] == '+' || intStr[j] == '-' || intStr[j] == '*' || intStr[j] == '/')) {
+                                Error::e6.printErrorMessageAtLine(line);
+                                return;
+                            }
                         }
+
+                        if (isConcatenating && icString) {
+                            strings.back() += evaluate(intStr);  // Concatenate strings
+                        } else {
+                            intStrs.push_back(evaluate(intStr));
+                            substring += "###INT_ARGUMENT###";
+                            arguments++;
+                            icInt = true;
+                        }
+
+                        inNumber = false;
+                        substring += str[i];
+
+                        intStr = "";
                     }
 
-                    if (isConcatenating && icString) {
-                        strings.back() += intStr;  // Concatenate strings
-                    } else {
-                        intStrs.push_back(intStr);
-                        substring += "###INT_ARGUMENT###";
-                        arguments++;
-                        icInt = true;
+                    if (str[i] == ')') {
+                        brackets -= 1;
                     }
-
-                    inNumber = false;
-                    substring += str[i];
-                    intStr = "";
                 }
             }
         } else {
 
-            if(str[i] == '(' && function == "") {
+            if(str[i] == '(' && !setFunction) {
                 function = substring;
+                setFunction = true;
+            } else {
+                brackets += 1;
             }
 
             if(str[i] != ' ') {
@@ -141,14 +163,12 @@ void checkForCommand(std::string str, int line) {
                 } else if(isdigit(str[i])) {
                     inNumber = true;
                     i -= 1;
-                } else if (str[i] == '+') {
-                    icIntOperator = "+";
+                } else if (str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/') {
                     isConcatenating = true;  // Set flag when + is encountered
                 } else if (str[i] == ',') {
                     isConcatenating = false;
                     icString = false;
                     icInt = false;
-                    icIntOperator = "";
                 } else {
                     substring += str[i];
                 }

@@ -1,4 +1,5 @@
 #include "arithmetic.hpp"
+#include "Error.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -15,11 +16,11 @@ int applyOp(int a, int b, char op) {
         case '*': return a * b;
         case '/': return a / b;
     }
-    throw std::invalid_argument("Invalid operator");
+    Error::e7.printErrorMessage();
 }
 
 // Function to evaluate an expression string
-int evaluate(const std::string& expression) {
+std::string evaluate(const std::string& expression) {
     std::stack<int> values;
     std::stack<char> ops;
     std::stringstream ss(expression);
@@ -59,5 +60,5 @@ int evaluate(const std::string& expression) {
         values.push(applyOp(val1, val2, op));
     }
 
-    return values.top();
+    return std::to_string(values.top());
 }

@@ -12,6 +12,7 @@ public:
     static const Error e4;
     static const Error e5;
     static const Error e6;
+    static const Error e7;
 
     Error(int code, const std::string& message);
     
