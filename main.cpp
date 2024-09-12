@@ -6,40 +6,9 @@
 #include "c++\utils.cpp"
 #include "c++\string.cpp"
 
-class Error {
-public:
-    static const Error e1;
-    static const Error e2;
-    static const Error e3;
-    static const Error e4;
-    static const Error e5;
-    static const Error e6;
+#include "c++\Error.hpp"
 
-    Error(int code, const std::string& message) : errorCode(code), errorMessage(message) {}
-    
-    int getCode() const { return errorCode; }
-    std::string getMessage() const { return errorMessage; }
-    
-    void printErrorMessage() const {
-        std::cout << errorMessage << "\nEXITCODE ::: " << "E:" << errorCode << std::endl;
-    }
-
-    void printErrorMessageAtLine(int line) const {
-        std::cout << "\n";
-        std::cout << "Line : " << line << "\n" << errorMessage << "\nEXITCODE ::: " << "E:" << errorCode << std::endl;
-    }
-
-private:
-    int errorCode;
-    std::string errorMessage;
-};
-
-const Error Error::e1 = Error(1, "Not enough Arguments");
-const Error Error::e2 = Error(2, "File not found");
-const Error Error::e3 = Error(3, "Not enough Arguments");
-const Error Error::e4 = Error(4, "Too many Arguments");
-const Error Error::e5 = Error(5, "Argument doesn't have the right type");
-const Error Error::e6 = Error(6, "Not allowed characters");
+#include "c\file_utils.c"
 
 void checkForCommand(std::string, int);
 bool checkForArguments(int, int, int);
@@ -53,19 +22,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::ifstream file (argv[1]);
-
-    if ( file.is_open() ) {
-        while ( file.good() ) {
-            char Char = file.get();
-            code += Char;
-        }
-    } else {
-        Error::e2.printErrorMessage();
-        return 0;
-    }
-
-    file.close();
+    code = read_file(argv[1]);
 
     std::string substring = "";
 
@@ -108,7 +65,7 @@ void checkForCommand(std::string str, int line) {
     std::string String = "";
     std::string intStr = "";
     std::vector<std::string> strings;
-    std::vector<int> ints;
+    std::vector<std::string> intStrs;
     int arguments = 0;
 
     bool inString = false;
@@ -117,6 +74,8 @@ void checkForCommand(std::string str, int line) {
     std::string function = "";
     bool isConcatenating = false;
     bool icString = false;
+    bool icInt = false;
+    std::string icIntOperator = "";
 
     for (int i = 0; i < str.length(); i++)
     {
@@ -142,22 +101,23 @@ void checkForCommand(std::string str, int line) {
             }
         } else if(inNumber) {
             if(str[i] != ' ') {
-                if(isdigit(str[i])) {
+                if(isdigit(str[i]) || str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/') {
                     intStr += str[i];
                 } else if(str[i] == ',' || str[i] == ')') {
                     for (size_t j = 0; j < intStr.length(); j++) {
-                        if(!(isdigit(intStr[j]))) {
+                        if(!(isdigit(intStr[j]) || intStr[j] == '+' || intStr[j] == '-' || intStr[j] == '*' || intStr[j] == '/')) {
                             Error::e6.printErrorMessageAtLine(line);
                             return;
                         }
                     }
 
                     if (isConcatenating && icString) {
-                        strings.back() += intStr;
+                        strings.back() += intStr;  // Concatenate strings
                     } else {
-                        ints.push_back(std::stoi(intStr));
+                        intStrs.push_back(intStr);
                         substring += "###INT_ARGUMENT###";
                         arguments++;
+                        icInt = true;
                     }
 
                     inNumber = false;
@@ -178,9 +138,13 @@ void checkForCommand(std::string str, int line) {
                     inNumber = true;
                     i -= 1;
                 } else if (str[i] == '+') {
+                    icIntOperator = "+";
                     isConcatenating = true;  // Set flag when + is encountered
                 } else if (str[i] == ',') {
                     isConcatenating = false;
+                    icString = false;
+                    icInt = false;
+                    icIntOperator = "";
                 } else {
                     substring += str[i];
                 }
@@ -195,7 +159,7 @@ void checkForCommand(std::string str, int line) {
             if(substring == "print(###STRING_ARGUMENT###);") {
                 std::cout << strings.at(0) + "\n";
             } else if (substring == "print(###INT_ARGUMENT###);") {
-                std::cout << ints.at(0);
+                std::cout << intStrs.at(0);
                 std::cout << "\n";
             } else {
                 Error::e5.printErrorMessageAtLine(line);

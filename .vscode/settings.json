@@ -48,6 +48,7 @@
         "xstddef": "cpp",
         "xtr1common": "cpp",
         "xutility": "cpp",
-        "math.c": "cpp"
+        "math.c": "cpp",
+        "file_utils.h": "c"
     }
 }
