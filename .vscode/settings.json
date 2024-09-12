@@ -49,6 +49,10 @@
         "xtr1common": "cpp",
         "xutility": "cpp",
         "math.c": "cpp",
-        "file_utils.h": "c"
+        "file_utils.h": "c",
+        "stack": "cpp",
+        "deque": "cpp",
+        "sstream": "cpp",
+        "stdlib.h": "c"
     }
 }

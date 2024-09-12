@@ -7,22 +7,26 @@
 #include "c++\string.cpp"
 
 #include "c++\Error.hpp"
+#include "c++\Arithmetic.hpp"
 
-#include "c\file_utils.c"
+#include "c\file_utils.h"
 
 void checkForCommand(std::string, int);
 bool checkForArguments(int, int, int);
 
 int main(int argc, char* argv[]) {
-
-    std::string code = "";
-
     if (argc < 2) {
         Error::e1.printErrorMessage();
         return 1;
     }
 
-    code = read_file(argv[1]);
+    char* file_content = read_file(argv[1]);
+    if (!file_content) {
+        Error::e2.printErrorMessage();
+        return 1;
+    }
+
+    std::string code(file_content);
 
     std::string substring = "";
 
