@@ -7,14 +7,19 @@ set GCC=g++
 :: Directories for source files and object files
 set CPP_DIR=c++
 set C_DIR=c
+set ASM_DIR=assembly
 
 set OBJ_DIR=debug
-set ASM_DIR=assembly
 
 :: Create the object directory if it does not exist
 if not exist %OBJ_DIR% mkdir %OBJ_DIR%
 
 %GCC% -c -o %OBJ_DIR%\main.obj main.cpp
+
+:: ASSEMBLY
+for %%f in (%ASM_DIR%\*.asm) do (
+    %NASM% -f win32 %%f -o %OBJ_DIR%\%%~nf.obj
+)
 
 :: CPP
 for %%f in (%CPP_DIR%\*.cpp) do (
@@ -22,7 +27,6 @@ for %%f in (%CPP_DIR%\*.cpp) do (
 )
 
 :: C
-
 for %%f in (%C_DIR%\*.c) do (
     %GCC% -c -o %OBJ_DIR%\%%~nf.o %%f
 )

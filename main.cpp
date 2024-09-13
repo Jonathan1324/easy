@@ -11,6 +11,8 @@
 
 #include "c\file_utils.h"
 
+extern "C" int Add(int a, int b);
+
 bool checkForCommand(std::string, int);
 bool checkForArguments(int, int, int);
 
