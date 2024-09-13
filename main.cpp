@@ -60,10 +60,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (substring.back() != ')') {
-        substring.pop_back();
-    }
-
     std::string str = substring.substr(0, substring.size()) + ";";
 
     checkForCommand(str, j);
@@ -116,47 +112,48 @@ void checkForCommand(std::string str, int line) {
             }
         } else if(inNumber) {
             if(str[i] != ' ') {
-                if(isdigit(str[i]) || str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/') {
+                if(isdigit(str[i]) || str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/' || str[i] == '(') {
                     intStr += str[i];
                 } else if(str[i] == ',' || str[i] == ')') {
-
-                    if (true) {
-                        for (size_t j = 0; j < intStr.length(); j++) {
-                            if(!(isdigit(intStr[j]) || intStr[j] == '+' || intStr[j] == '-' || intStr[j] == '*' || intStr[j] == '/')) {
-                                Error::e6.printErrorMessageAtLine(line);
-                                return;
+                    if (str[i] == ')' && str[i + 1] == ';') {
+                        if (true) {
+                            for (size_t j = 0; j < intStr.length(); j++) {
+                                if(!(isdigit(intStr[j]) || intStr[j] == '+' || intStr[j] == '-' || intStr[j] == '*' || intStr[j] == '/' || intStr[j] == '(' || intStr[j] == ')')) {
+                                    Error::e6.printErrorMessageAtLine(line);
+                                    return;
+                                }
                             }
+
+                            if (isConcatenating && icString) {
+                                strings.back() += evaluate(intStr);  // Concatenate strings
+                            } else {
+                                intStrs.push_back(evaluate(intStr));
+                                substring += "###INT_ARGUMENT###";
+                                arguments++;
+                                icInt = true;
+                            }
+
+                            inNumber = false;
+                            substring += str[i];
+
+                            intStr = "";
                         }
 
-                        if (isConcatenating && icString) {
-                            strings.back() += evaluate(intStr);  // Concatenate strings
-                        } else {
-                            intStrs.push_back(evaluate(intStr));
-                            substring += "###INT_ARGUMENT###";
-                            arguments++;
-                            icInt = true;
+                        if (str[i] == ')') {
+                            brackets -= 1;
                         }
-
-                        inNumber = false;
-                        substring += str[i];
-
-                        intStr = "";
-                    }
-
-                    if (str[i] == ')') {
-                        brackets -= 1;
+                    } else {
+                        intStr += str[i];
                     }
                 }
             }
         } else {
-
             if(str[i] == '(' && !setFunction) {
                 function = substring;
-                setFunction = true;
             } else {
                 brackets += 1;
             }
-
+            
             if(str[i] != ' ') {
                 if (str[i] == '\'') {
                     inString = true;
@@ -170,8 +167,16 @@ void checkForCommand(std::string str, int line) {
                     icString = false;
                     icInt = false;
                 } else {
-                    substring += str[i];
+                    if(str[i] != '(' || !setFunction) {
+                        substring += str[i];
+                    } else {
+                        intStr += str[i];
+                    }
                 }
+            }
+
+            if (function != "") {
+                setFunction = true;
             }
         }
     }

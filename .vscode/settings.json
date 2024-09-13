@@ -53,6 +53,7 @@
         "stack": "cpp",
         "deque": "cpp",
         "sstream": "cpp",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "string.h": "c"
     }
 }
