@@ -11,7 +11,7 @@
 
 #include "c\file_utils.h"
 
-void checkForCommand(std::string, int);
+bool checkForCommand(std::string, int);
 bool checkForArguments(int, int, int);
 
 int main(int argc, char* argv[]) {
@@ -49,25 +49,34 @@ int main(int argc, char* argv[]) {
     }
     
     int j = 1;
+    bool worked = true;
 
     for (int i = 0; i < code.length(); i++) {
         substring += code[i];
 
         if (code.substr(i, 1) == ";") {
-            checkForCommand(substring, j);
+            worked = checkForCommand(substring, j);
             substring = "";
             j++;
+
+            if (!worked) {
+                break;
+            }
         }
     }
 
-    std::string str = substring.substr(0, substring.size()) + ";";
+    std::string str = "";
+
+    if (worked) {
+        str = substring.substr(0, substring.size()) + ";";
+    }
 
     checkForCommand(str, j);
 
     return 0;
 }
 
-void checkForCommand(std::string str, int line) {
+bool checkForCommand(std::string str, int line) {
 
     std::string substring = "";
     std::string String = "";
@@ -120,7 +129,7 @@ void checkForCommand(std::string str, int line) {
                             for (size_t j = 0; j < intStr.length(); j++) {
                                 if(!(isdigit(intStr[j]) || intStr[j] == '+' || intStr[j] == '-' || intStr[j] == '*' || intStr[j] == '/' || intStr[j] == '(' || intStr[j] == ')')) {
                                     Error::e6.printErrorMessageAtLine(line);
-                                    return;
+                                    return false;
                                 }
                             }
 
@@ -192,13 +201,18 @@ void checkForCommand(std::string str, int line) {
                 std::cout << "\n";
             } else {
                 Error::e5.printErrorMessageAtLine(line);
+                return false;
             }
+        } else {
+            return false;
         }
         break;
     
     default:
         break;
     }
+
+    return true;
 }
 
 bool checkForArguments(int arguments, int goalArguments, int line) {
