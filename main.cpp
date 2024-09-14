@@ -11,7 +11,7 @@
 
 #include "c\file_utils.h"
 
-extern "C" int Add(int a, int b);
+extern "C" int test();
 
 bool checkForCommand(std::string, int);
 bool checkForArguments(int, int, int);
@@ -27,6 +27,10 @@ int main(int argc, char* argv[]) {
         Error::e2.printErrorMessage();
         return 1;
     }
+
+    int result = test();
+
+    std::cout << "The result is: " << result << std::endl;
 
     std::string code(file_content);
 
