@@ -4,14 +4,12 @@
 #include <unordered_map>
 #include <vector>
 #include "c++\utils.cpp"
-#include "c++\string.cpp"
 
+#include "c++\String.hpp"
 #include "c++\Error.hpp"
 #include "c++\Arithmetic.hpp"
 
 #include "c\file_utils.h"
-
-extern "C" int test();
 
 bool checkForCommand(std::string, int);
 bool checkForArguments(int, int, int);
@@ -27,10 +25,6 @@ int main(int argc, char* argv[]) {
         Error::e2.printErrorMessage();
         return 1;
     }
-
-    int result = test();
-
-    std::cout << "The result is: " << result << std::endl;
 
     std::string code(file_content);
 
@@ -84,6 +78,8 @@ int main(int argc, char* argv[]) {
 
 bool checkForCommand(std::string str, int line) {
 
+    std::cout << str << "\n";
+
     std::string substring = "";
     std::string String = "";
     std::string intStr = "";
@@ -93,6 +89,9 @@ bool checkForCommand(std::string str, int line) {
 
     bool inString = false;
     bool inNumber = false;
+    bool inVariable = false;
+
+
 
     std::string function = "";
     bool isConcatenating = false;
@@ -103,9 +102,39 @@ bool checkForCommand(std::string str, int line) {
 
     int brackets = 0;
 
+    std::string vName = "";
+    bool vDef = false;
+    std::string vValueS = "";
+
     for (int i = 0; i < str.length(); i++)
     {
-        if(inString){
+        if(inVariable) {
+            if(vDef) {
+                if(str[i] == ' ' || str[i] == '=') {
+                    vDef = false;
+                    substring = "";
+                    if(str[i] == '=') {
+                        i -= 1;
+                    }
+                } else {
+                    vName += str[i];
+                }
+            } else {
+                if(vName == "") {
+                    if(substring[0] == 's' || substring[1] == 't' || substring[2] == 'r' || substring[3] == 'i' || substring[4] == 'n' || substring[5] == ' '){
+                        i -= 1;
+                        vDef = true;
+                    }
+                } else {
+                    if(str[i] == ';') {
+                        vValueS = convertValueToString(vValueS);
+                        std::cout << vValueS;
+                    } else if(str[i] != '=') {
+                        vValueS += str[i];
+                    }
+                }
+            }
+        } else if(inString){
             if (str[i] == '\'') {
                 inString = false;
                 if (isConcatenating && !strings.empty()) {
@@ -163,7 +192,14 @@ bool checkForCommand(std::string str, int line) {
                 }
             }
         } else {
-            if(str[i] == '(' && !setFunction) {
+            if (substring == "string" && str[i] == ' ' || substring == "str" && str[i] == ' ') {
+                function = "string";
+                substring = "string";
+
+                substring += str[i];
+
+                inVariable = true;
+            } else if(str[i] == '(' && !setFunction) {
                 function = substring;
             } else {
                 brackets += 1;

@@ -1,4 +1,4 @@
-#include "arithmetic.hpp"
+#include "Arithmetic.hpp"
 #include "Error.hpp"
 
 #include <iostream>
