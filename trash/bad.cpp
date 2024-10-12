@@ -125,7 +125,7 @@ bool checkForCommand(std::string str, int line) {
                     }
                 } else {
                     if(str[i] == ';') {
-                        vValueS = convertValueToString(vValueS);
+                        vValueS = vValueS;
                         std::cout << vValueS;
                     } else if(str[i] != '=') {
                         vValueS += str[i];

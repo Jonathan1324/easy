@@ -22,14 +22,14 @@ for %%f in (%ASM_DIR%\*.asm) do (
 )
 
 :: CPP
-for %%f in (%CPP_DIR%\*.cpp) do (
-    %GCC% -m32 -c -o %OBJ_DIR%\%%~nf.obj %%f
-)
+:: for %%f in (%CPP_DIR%\*.cpp) do (
+::    %GCC% -m32 -c -o %OBJ_DIR%\%%~nf.obj %%f
+::)
 
 :: C
-for %%f in (%C_DIR%\*.c) do (
-    %GCC% -m32 -c -o %OBJ_DIR%\%%~nf.o %%f
-)
+::for %%f in (%C_DIR%\*.c) do (
+::    %GCC% -m32 -c -o %OBJ_DIR%\%%~nf.o %%f
+::)
 
 :: MAIN
-%GCC% -m32 -o main.exe %OBJ_DIR%\*.obj %OBJ_DIR%\*.o
+%GCC% -m32 -o main.exe %OBJ_DIR%\*.obj %OBJ_DIR%\*.o -static

@@ -1,1 +1,2 @@
-string name = "Hello World!"
+print("Hello, World!");
+print("Hello, Line 2!")
