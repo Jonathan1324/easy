@@ -296,9 +296,15 @@ private:
 
     void analyzeStatement(const std::unique_ptr<ASTNode>& statement) {
         if (auto printNode = dynamic_cast<const PrintNode*>(statement.get())) {
-            //analyzePrintNode(*printNode);
+            analyzePrintNode(*printNode);
         } else if (auto varDeclNode = dynamic_cast<const VarDeclarationNode*>(statement.get())) {
-            //analyzeVarDeclarationNode(*varDeclNode);
+            analyzeVarDeclarationNode(*varDeclNode);
+        } else if (auto intLiteralNode = dynamic_cast<const IntLiteralNode*>(statement.get())) {
+            
+        } else if (auto stringLiteralNode = dynamic_cast<const StringLiteralNode*>(statement.get())) {
+            
+        } else if (auto varNode = dynamic_cast<const VarNode*>(statement.get())) {
+            
         } else {
             //throw std::runtime_error("Unrecognized statement");
         }
@@ -347,10 +353,6 @@ private:
 
         // Überprüfen, ob der Ausdruck eine Variable (VarNode) ist
         if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-            // Hier überprüfen wir, ob die Variable existiert
-            if (variables.find(varNode->name) == variables.end()) {
-                throw std::runtime_error("Error: Variable not found: " + varNode->name);
-            }
             return; // Nichts weiter zu tun
         }
 
