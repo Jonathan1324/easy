@@ -54,6 +54,7 @@
         "deque": "cpp",
         "sstream": "cpp",
         "stdlib.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "variant": "cpp"
     }
 }
