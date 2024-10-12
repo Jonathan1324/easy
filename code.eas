@@ -1,2 +1,4 @@
-print("Hello, World!");
+var str = "Hello, World!"
+
+print(str)
 print("Hello, Line 2!")

@@ -5,6 +5,8 @@
 #include <cctype>
 #include <memory>
 #include <stdexcept>
+#include <unordered_map>
+#include <set>
 
 #include "c++\String.hpp"
 #include "c++\Error.hpp"
@@ -12,53 +14,7 @@
 
 #include "c\file_utils.h"
 
-#include "Tokenizer\TokenTypes.cpp"
-
-struct Token {
-    TokenType type; // Typ des Tokens
-    std::string value; // Wert des Tokens
-
-    // Konstruktor für Token
-    Token(TokenType t, const std::string& v) : type(t), value(v) {}
-};
-
-// Funktion zur Erkennung von Funktionstoken
-Token tokenizeFunction(const std::string& code, size_t& i) {
-    if (code.substr(i, 5) == "print") {
-        i += 5; // Index um 5 erhöhen
-        return {TokenType::PRINT, "print"};
-    }
-    return {TokenType::UNKNOWN, ""}; // Rückgabe UNKNOWN, wenn kein Token erkannt wurde
-}
-
-// Funktion zur Erkennung von Literal-Token
-Token tokenizeLiteral(const std::string& code, size_t& i) {
-    if (code[i] == '"') {
-        std::string stringLiteral;
-        ++i; // Überspringt das öffnende "
-        while (i < code.length() && code[i] != '"') {
-            stringLiteral += code[i];
-            ++i;
-        }
-        if (i < code.length() && code[i] == '"') {
-            ++i; // Überspringt das schließende "
-        }
-        return {TokenType::STRING_LITERAL, stringLiteral};
-    }
-    return {TokenType::UNKNOWN, ""}; // Rückgabe UNKNOWN, wenn kein Token erkannt wurde
-}
-
-Token tokenizeSymbol(const std::string& code, size_t& i) {
-    if (code[i] == '(') {
-        ++i; // Index erhöhen
-        return {TokenType::OPEN_PARENTHESIS, "("};
-    }
-    if (code[i] == ')') {
-        ++i; // Index erhöhen
-        return {TokenType::CLOSE_PARENTHESIS, ")"};
-    }
-    return {TokenType::UNKNOWN, ""}; // Rückgabe UNKNOWN, wenn kein Token erkannt wurde
-}
+#include "Tokenizer\tokenizeToken.cpp"
 
 // Hauptfunktion zur Tokenisierung
 std::vector<Token> tokenize(const std::string& code) {
@@ -101,6 +57,24 @@ std::vector<Token> tokenize(const std::string& code) {
             continue;
         }
 
+        Token keywordToken = tokenizeKeyword(code, i);
+        if (keywordToken.type != TokenType::UNKNOWN) {
+            tokens.push_back(keywordToken);
+            continue;
+        }
+
+        Token assignmentToken = tokenizeAssignment(code, i);
+        if (assignmentToken.type != TokenType::UNKNOWN) {
+            tokens.push_back(assignmentToken);
+            continue;
+        }
+
+        Token identifiertToken = tokenizeIdentifier(code, i);
+        if (identifiertToken.type != TokenType::UNKNOWN) {
+            tokens.push_back(identifiertToken);
+            continue;
+        }
+
         tokens.push_back({TokenType::UNKNOWN, std::string(1, code[i])});
         ++i;
     }
@@ -128,15 +102,63 @@ public:
     }
 };
 
-// PrintNode zur Speicherung der Print-Anweisung
-class PrintNode : public ASTNode {
+class IntLiteralNode : public ASTNode {
 public:
-    std::string value; // Der Wert, der ausgegeben werden soll
+    int value;
 
-    PrintNode(const std::string& val) : value(val) {}
+    IntLiteralNode(int val) : value(val) {}
 
     void print(int indent = 0) const override {
-        std::cout << std::string(indent, ' ') << "PrintNode: " << value << "\n";
+        std::cout << std::string(indent, ' ') << "IntLiteralNode: " << value << "\n";
+    }
+};
+
+class StringLiteralNode : public ASTNode {
+public:
+    std::string value;
+
+    StringLiteralNode(const std::string& val) : value(val) {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "StringLiteralNode: " << value << "\n";
+    }
+};
+
+class PrintNode : public ASTNode {
+public:
+    std::unique_ptr<ASTNode> expression; // Der Ausdruck, der ausgegeben werden soll
+
+    PrintNode(std::unique_ptr<ASTNode> expr) : expression(std::move(expr)) {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "PrintNode:\n";
+        expression->print(indent + 2); // Ausgabe des Ausdrucks
+    }
+};
+
+// Knoten für die Variablendeklaration
+class VarDeclarationNode : public ASTNode {
+public:
+    std::string varName; // Der Name der Variable
+    std::unique_ptr<ASTNode> expression; // Ausdruck, der der Variable zugewiesen wird
+
+    VarDeclarationNode(const std::string& name, std::unique_ptr<ASTNode> expr)
+        : varName(name), expression(std::move(expr)) {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "VarDeclarationNode: " << varName << "\n";
+        expression->print(indent + 2); // Drucke den Ausdruck
+    }
+};
+
+class VarNode : public ASTNode {
+public:
+    std::string name; // Der Name der Variable
+
+    VarNode(const std::string& name) : name(name) {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "VarNode: " << name << "\n";
     }
 };
 
@@ -190,7 +212,30 @@ private:
             return parsePrintStatement();
         }
 
+        if (currentToken().type == TokenType::VAR) {
+            return parseVarDeclaration();
+        }
+
         throw std::runtime_error("Unrecognized statement");
+    }
+
+    std::unique_ptr<ASTNode> parseVarDeclaration() {
+        advance(); // var Token überspringen
+
+        if (currentToken().type != TokenType::IDENTIFIER) {
+            throw std::runtime_error("Expected variable name after 'var'");
+        }
+        std::string varName = currentToken().value;
+        advance(); // Variable Name überspringen
+
+        if (currentToken().type != TokenType::ASSIGNMENT) {
+            throw std::runtime_error("Expected '=' after variable name");
+        }
+        advance(); // '=' Token überspringen
+
+        auto expression = parseExpression(); // Hier den Ausdruck parsen
+
+        return std::make_unique<VarDeclarationNode>(varName, std::move(expression));
     }
 
     // Eine Print-Anweisung parsen
@@ -201,44 +246,115 @@ private:
         }
         advance(); // '(' Token überspringen
 
-        if (currentToken().type != TokenType::STRING_LITERAL) {
-            throw std::runtime_error("Expected string literal");
+        std::unique_ptr<ASTNode> expression;
+
+        if (currentToken().type == TokenType::STRING_LITERAL) {
+            expression = std::make_unique<StringLiteralNode>(currentToken().value);
+            advance(); // String literal Token überspringen
+        } else if (currentToken().type == TokenType::IDENTIFIER) { // Hier ID für die Variablen
+            expression = std::make_unique<VarNode>(currentToken().value);
+            advance(); // Identifier Token überspringen
+        } else {
+            throw std::runtime_error("Expected string literal or variable name");
         }
-        std::string stringValue = currentToken().value;
-        advance(); // String literal Token überspringen
 
         if (currentToken().type != TokenType::CLOSE_PARENTHESIS) {
-            throw std::runtime_error("Expected ')' after string literal");
+            throw std::runtime_error("Expected ')' after argument");
         }
         advance(); // ')' Token überspringen
 
-        // Rückgabe eines neuen PrintNode
-        return std::make_unique<PrintNode>(stringValue);
+        return std::make_unique<PrintNode>(std::move(expression)); // Rückgabe eines neuen PrintNode
+    }
+
+    std::unique_ptr<ASTNode> parseExpression() {
+        if (currentToken().type == TokenType::STRING_LITERAL) {
+            std::string stringValue = currentToken().value;
+            advance(); // String literal Token überspringen
+            return std::make_unique<StringLiteralNode>(stringValue);
+        } else if (currentToken().type == TokenType::IDENTIFIER) {
+            std::string varName = currentToken().value;
+            advance(); // Identifier Token überspringen
+            return std::make_unique<VarNode>(varName); // Erstelle einen VarNode, um auf die Variable zuzugreifen
+        }
+        throw std::runtime_error("Expected expression");
     }
 };
 
 class SemanticAnalyzer {
 public:
     void analyze(const ProgramNode& programNode) {
+        // Leeres Map für die Variablen
+        variables.clear();
         for (const auto& statement : programNode.statements) {
             analyzeStatement(statement);
         }
     }
 
 private:
+    std::unordered_map<std::string, std::string> variables; // Map für Variablen
+    std::set<std::string> declaredVariables;
+
     void analyzeStatement(const std::unique_ptr<ASTNode>& statement) {
         if (auto printNode = dynamic_cast<const PrintNode*>(statement.get())) {
-            analyzePrintNode(*printNode);
+            //analyzePrintNode(*printNode);
+        } else if (auto varDeclNode = dynamic_cast<const VarDeclarationNode*>(statement.get())) {
+            //analyzeVarDeclarationNode(*varDeclNode);
+        } else {
+            //throw std::runtime_error("Unrecognized statement");
         }
-        // Hier kannst du weitere Anweisungen hinzufügen, wenn du sie implementierst.
+    }
+
+    bool isVariableDeclared(const std::string& varName) {
+        // Hier sollte der Code stehen, der überprüft, ob die Variable deklariert wurde
+        return declaredVariables.count(varName) > 0; // Beispiel mit std::set oder std::unordered_set
+    }
+
+     void analyzeVarDeclarationNode(const VarDeclarationNode& varDeclNode) {
+        // Überprüfen, ob der Variablenname ein gültiger Bezeichner ist
+        if (varDeclNode.varName.empty()) {
+            throw std::runtime_error("Error: Variable name cannot be empty.");
+        }
+
+        // Hier analysierst du den Ausdruck, der der Variable zugewiesen wird
+        if (varDeclNode.expression) {
+            // Hier könnte eine Methode aufgerufen werden, um den Ausdruck zu analysieren
+            analyzeExpression(*varDeclNode.expression);
+        } else {
+            throw std::runtime_error("Error: Variable declaration must have an expression.");
+        }
+    }
+
+    void analyzeExpression(const ASTNode& expression) {
+        if (dynamic_cast<const StringLiteralNode*>(&expression)) {
+            // Hier kannst du überprüfen, ob es ein StringLiteral ist
+        } else if (const auto* varNode = dynamic_cast<const VarNode*>(&expression)) {
+            // Hier kannst du überprüfen, ob es eine gültige Variable ist
+            // Zum Beispiel, ob die Variable deklariert wurde
+            if (!isVariableDeclared(varNode->name)) {
+                throw std::runtime_error("Error: Variable '" + varNode->name + "' is not declared.");
+            }
+        } else {
+            throw std::runtime_error("Error: Unsupported expression type.");
+        }
     }
 
     void analyzePrintNode(const PrintNode& printNode) {
-        // Überprüfen, ob der übergebene Wert ein String ist
-        if (printNode.value.empty()) {
-            throw std::runtime_error("Error: print statement must have a string value.");
+        // Überprüfen, ob der Ausdruck ein StringLiteralNode ist
+        if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
+            // Der Ausdruck ist ein gültiger StringLiteralNode
+            return; // Nichts weiter zu tun
         }
-        // Hier kannst du weitere Bedingungen einfügen, falls notwendig.
+
+        // Überprüfen, ob der Ausdruck eine Variable (VarNode) ist
+        if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
+            // Hier überprüfen wir, ob die Variable existiert
+            if (variables.find(varNode->name) == variables.end()) {
+                throw std::runtime_error("Error: Variable not found: " + varNode->name);
+            }
+            return; // Nichts weiter zu tun
+        }
+
+        throw std::runtime_error("Error: print statement must have a valid string expression.");
     }
 };
 
@@ -250,7 +366,9 @@ public:
         std::string code = "";
         for (const auto& statement : programNode->statements) {
             if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
-                code += "print ( \"" + printNode->value + "\" ) ;\n";
+                code += generatePrintCode(*printNode);
+            } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
+                code += generateVarDeclarationCode(*varDeclNode);
             }
         }
         return code;
@@ -258,10 +376,37 @@ public:
 
 private:
     std::shared_ptr<ProgramNode> programNode;
+
+    std::string generatePrintCode(const PrintNode& printNode) {
+        // Überprüfen, ob der Ausdruck eine Variable ist oder ein Literal
+        if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
+            return "print(\"" + strNode->value + "\")\n"; // Ausgabe eines String-Literals
+        } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
+            return "print(" + varNode->name + ")\n"; // Ausgabe einer Variablen
+        }
+
+        throw std::runtime_error("Error: Unsupported print expression");
+    }
+
+    std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
+        std::string code = varDeclNode.varName + " = ";
+        
+        // Überprüfen, ob der Ausdruck ein StringLiteralNode ist
+        if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
+            code += "\"" + strNode->value + "\""; // Wert des String-Literals
+        } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
+            code += varNode->name; // Wert einer Variablen
+        }
+
+        code += "\n"; // Zeilenumbruch hinzufügen
+        return code;
+    }
 };
 
 class Interpreter {
 public:
+    std::unordered_map<std::string, std::string> variables;
+
     void interpret(const ProgramNode& programNode) {
         for (const auto& statement : programNode.statements) {
             interpretStatement(statement);
@@ -272,11 +417,46 @@ private:
     void interpretStatement(const std::unique_ptr<ASTNode>& statement) {
         if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
             interpretPrintNode(*printNode);
+        } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
+            interpretVarDeclaration(*varDeclNode);
         }
     }
 
+    void interpretVarDeclaration(const VarDeclarationNode& varDeclNode) {
+        // Hier interpretierst du den Ausdruck, um den Wert zu ermitteln
+        std::string value;
+        if (auto strNode = dynamic_cast<StringLiteralNode*>(varDeclNode.expression.get())) {
+            value = strNode->value; // Den Wert aus dem StringLiteralNode abrufen
+        } else if (auto varNode = dynamic_cast<VarNode*>(varDeclNode.expression.get())) {
+            // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
+            if (variables.find(varNode->name) != variables.end()) {
+                value = variables[varNode->name]; // Wert aus der Map abrufen
+            } else {
+                throw std::runtime_error("Variable not found: " + varNode->name);
+            }
+        }
+
+        // Speichere den Wert in der Variablen Map
+        variables[varDeclNode.varName] = value;
+    }
+
     void interpretPrintNode(const PrintNode& printNode) {
-        std::cout << printNode.value << std::endl; // Ausgabe des Strings
+        std::string output;
+
+        if (auto varNode = dynamic_cast<VarNode*>(printNode.expression.get())) {
+            // Hier ist der Zugriff auf die Variable zu implementieren
+            if (variables.find(varNode->name) != variables.end()) {
+                output = variables[varNode->name]; // Variable aus dem Speicher abrufen
+            } else {
+                throw std::runtime_error("Variable not found: " + varNode->name);
+            }
+        } else if (auto strNode = dynamic_cast<StringLiteralNode*>(printNode.expression.get())) {
+            output = strNode->value; // String-Wert
+        } else {
+            throw std::runtime_error("Unrecognized expression in print statement");
+        }
+
+        std::cout << output << std::endl; // Ausgabe des Strings
     }
 };
 
@@ -327,6 +507,9 @@ int main(int argc, char* argv[]) {
                 case TokenType::STRING_LITERAL:
                     std::cout << "Token: STRING_LITERAL, Value: \"" << token.value << "\"\n";
                     break;
+                    case TokenType::INT_LITERAL:
+                    std::cout << "Token: INT_LITERAL, Value: \"" << token.value << "\"\n";
+                    break;
                 case TokenType::OPEN_PARENTHESIS:
                     std::cout << "Token: OPEN_PARENTHESIS, Value: " << token.value << "\n";
                     break;
@@ -338,6 +521,15 @@ int main(int argc, char* argv[]) {
                     break;
                 case TokenType::NEWLINE:
                     std::cout << "Token: NEWLINE, Value: " << token.value << "\n";
+                    break;
+                case TokenType::VAR:
+                    std::cout << "Token: VAR, Value: " << token.value << "\n";
+                    break;
+                case TokenType::IDENTIFIER:
+                    std::cout << "Token: IDENTIFIER, Value: " << token.value << "\n";
+                    break;
+                case TokenType::ASSIGNMENT:
+                    std::cout << "Token: ASSIGNMENT, Value: " << token.value << "\n";
                     break;
                 default:
                     std::cout << "Token: UNKNOWN, Value: " << token.value << "\n";

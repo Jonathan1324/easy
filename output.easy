@@ -1,2 +1,3 @@
-print ( "Hello, World!" ) ;
-print ( "Hello, Line 2!" ) ;
+str = "Hello, World!"
+print(str)
+print("Hello, Line 2!")

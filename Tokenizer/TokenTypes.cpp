@@ -1,9 +1,15 @@
 enum class TokenType {
     // Funktionstoken
     PRINT,
+
+    // Variablen
+    VAR,
+    IDENTIFIER,
+    ASSIGNMENT,
     
     // Literaltoken
     STRING_LITERAL,
+    INT_LITERAL,
     
     // Symboltoken
     OPEN_PARENTHESIS,
@@ -15,4 +21,12 @@ enum class TokenType {
     
     // Zusätzliche Token
     UNKNOWN
+};
+
+struct Token {
+    TokenType type; // Typ des Tokens
+    std::string value; // Wert des Tokens
+
+    // Konstruktor für Token
+    Token(TokenType t, const std::string& v) : type(t), value(v) {}
 };

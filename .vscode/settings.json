@@ -55,6 +55,7 @@
         "sstream": "cpp",
         "stdlib.h": "c",
         "string.h": "c",
-        "variant": "cpp"
+        "variant": "cpp",
+        "xtree": "cpp"
     }
 }
