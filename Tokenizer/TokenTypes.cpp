@@ -20,6 +20,7 @@ enum class TokenType {
     NEWLINE,
     
     // Zusätzliche Token
+    COMMENT,
     UNKNOWN
 };
 

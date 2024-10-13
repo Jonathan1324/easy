@@ -1,4 +1,6 @@
 var str = "Hello, World!!!"
+//Comment Test with '//'
 var int = 1
-print(int)
-print("Hello, Line 2!")
+//Comment Test with '#'
+print ( str )
+print ( int )

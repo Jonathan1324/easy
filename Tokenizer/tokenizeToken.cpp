@@ -75,3 +75,22 @@ Token tokenizeAssignment(const std::string& code, size_t& i) {
     }
     return {TokenType::UNKNOWN, ""}; // Rückgabe UNKNOWN, wenn kein Token erkannt wurde
 }
+
+Token tokenizeComment(const std::string& code, size_t& i) {
+    if (code[i] == '#' || code[i] == '/' && code[i + 1] == '/') {
+        if(code[i] == '/') {
+            ++i;
+        }
+        std::string comment;
+        ++i;
+        while (i < code.length() && code[i] != '\n') {
+            comment += code[i];
+            ++i;
+        }
+        if (i < code.length() && code[i] == '\n') {
+            ++i;
+        }
+        return {TokenType::COMMENT, comment};
+    }
+    return {TokenType::UNKNOWN, ""};
+}

@@ -40,6 +40,13 @@ std::vector<Token> tokenize(const std::string& code) {
 
         // TOKENS
 
+        Token commentToken = tokenizeComment(code, i);
+        if (commentToken.type != TokenType::UNKNOWN) {
+            tokens.push_back({TokenType::NEWLINE, "\\n"});
+            tokens.push_back(commentToken);
+            continue;
+        }
+
         Token functionToken = tokenizeFunction(code, i);
         if (functionToken.type != TokenType::UNKNOWN) {
             tokens.push_back(functionToken);
@@ -165,6 +172,17 @@ public:
     }
 };
 
+class CommentNode : public ASTNode {
+public:
+    std::string comment;
+
+    CommentNode(const std::string& val) : comment(val) {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "CommentNode: " << comment << "\n";
+    }
+};
+
 // Parser-Klasse
 class Parser {
 public:
@@ -178,6 +196,9 @@ public:
 
             if (currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::SEMICOLON) {
                 advance(); // Überspringe NEWLINE oder SEMICOLON
+            } else if(currentToken().type == TokenType::COMMENT) {
+                programNode->statements.push_back(std::make_unique<CommentNode>(currentToken().value));
+                advance();
             } else {
                 throw std::runtime_error("Expected NEWLINE or SEMICOLON after statement");
             }
@@ -209,6 +230,10 @@ private:
     std::unique_ptr<ASTNode> parseStatement() {
         if (currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::SEMICOLON) {
             return nullptr; // Keine Anweisung zurückgeben
+        }
+
+        if(currentToken().type == TokenType::COMMENT) {
+            return nullptr;
         }
 
         if (currentToken().type == TokenType::PRINT) {
@@ -384,6 +409,8 @@ public:
                 code += generatePrintCode(*printNode);
             } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
                 code += generateVarDeclarationCode(*varDeclNode);
+            } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
+                code += generateCommentCode(*commentNode);
             }
         }
         return code;
@@ -395,9 +422,9 @@ private:
     std::string generatePrintCode(const PrintNode& printNode) {
         // Überprüfen, ob der Ausdruck eine Variable ist oder ein Literal
         if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-            return "print(\"" + strNode->value + "\")\n"; // Ausgabe eines String-Literals
+            return "print ( \"" + strNode->value + "\" )\n"; // Ausgabe eines String-Literals
         } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-            return "print(" + varNode->name + ")\n"; // Ausgabe einer Variablen
+            return "print ( " + varNode->name + " )\n"; // Ausgabe einer Variablen
         }
 
         throw std::runtime_error("Error: Unsupported print expression");
@@ -416,6 +443,12 @@ private:
         }
 
         code += "\n"; // Zeilenumbruch hinzufügen
+        return code;
+    }
+
+    std::string generateCommentCode(const CommentNode& commentNode) {
+        std::string code = "//" + commentNode.comment + "\n";
+
         return code;
     }
 };
@@ -582,6 +615,9 @@ int main(int argc, char* argv[]) {
                     break;
                 case TokenType::ASSIGNMENT:
                     std::cout << "Token: ASSIGNMENT, Value: " << token.value << "\n";
+                    break;
+                case TokenType::COMMENT:
+                    std::cout << "Token: COMMENT, Value: " << token.value << "\n";
                     break;
                 default:
                     std::cout << "Token: UNKNOWN, Value: " << token.value << "\n";
