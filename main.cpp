@@ -1125,7 +1125,7 @@ int main(int argc, char* argv[]) {
             writeToFile(outputDirectory + ".f90", compiled);
 
             if(debugShowCompiled) {
-                std::cout << "\nCompiled Code to Fortran 99:\n";
+                std::cout << "\nCompiled Code to Fortran 90:\n";
                 std::cout << compiled;
             }
         }
