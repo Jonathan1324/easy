@@ -1,4 +1,4 @@
-var str = "Hello, World!!!" //Comment Test with '//'
+var str = "Hello, World!!!" // Comment Test with '//'
 
 var int = 1 #Comment Test with '#'
 

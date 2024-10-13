@@ -470,7 +470,11 @@ private:
         }
 
         std::string generateCommentCode(const CommentNode& commentNode) {
-            return "// " + commentNode.comment + "\n";
+            if(commentNode.comment[0] != ' ') {
+                return "// " + commentNode.comment + "\n";
+            } else {
+                return "//" + commentNode.comment + "\n";
+            }
         }
     };
 
@@ -522,7 +526,11 @@ private:
         }
 
         std::string generateCommentCode(const CommentNode& commentNode) {
-            return "# " + commentNode.comment + "\n";
+            if(commentNode.comment[0] != ' ') {
+                return "# " + commentNode.comment + "\n";
+            } else {
+                return "#" + commentNode.comment + "\n";
+            }
         }
     };
 };
@@ -622,6 +630,8 @@ int main(int argc, char* argv[]) {
 
     char *filename;
 
+    std::string outputDirectory = "./a";
+
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--show-filecontent") == 0 || strcmp(argv[i], "--filecontent") == 0 || strcmp(argv[i], "--f") == 0) {
             debugShowFile = true;
@@ -638,13 +648,16 @@ int main(int argc, char* argv[]) {
             compile = true;
         } else if (strcmp(argv[i], "-i") == 0) {
             interpret = true;
-        } else if (strcmp(argv[i], "--eas") == 0 || strcmp(argv[i], "--easy")) {
+        } else if (strcmp(argv[i], "--eas") == 0 || strcmp(argv[i], "--easy") == 0) {
             easy = true;
         } else if (strcmp(argv[i], "--py") == 0 || strcmp(argv[i], "--python") == 0) {
             python = true;
         } else if (strcmp(argv[i], "--c-to-all") == 0 || strcmp(argv[i], "--compile-to-all") == 0) {
             easy = true;
             python = true;
+        } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "-output") == 0) {
+            outputDirectory = argv[i + 1];
+            ++i;
         } else {
             filename = argv[i];
         }
@@ -741,7 +754,7 @@ int main(int argc, char* argv[]) {
         if(easy) {
             std::string compiled = compiler.generateCode(CompilerLanguages::Easy);
 
-            writeToFile("output.easy", compiled);
+            writeToFile(outputDirectory + ".easy", compiled);
 
             if(debugShowCompiled) {
                 std::cout << "\nCompiled Code to Easy:\n";
@@ -752,7 +765,7 @@ int main(int argc, char* argv[]) {
         if(python) {
             std::string compiled = compiler.generateCode(CompilerLanguages::Python);
 
-            writeToFile("output.py", compiled);
+            writeToFile(outputDirectory + ".py", compiled);
 
             if(debugShowCompiled) {
                 std::cout << "\nCompiled Code to Python:\n";
