@@ -1,4 +1,6 @@
 var str = "Hello, World!!!"
 
-print(str)
+var int = 1
+
+print(int)
 print("Hello, Line 2!")

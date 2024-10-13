@@ -254,6 +254,9 @@ private:
         if (currentToken().type == TokenType::STRING_LITERAL) {
             expression = std::make_unique<StringLiteralNode>(currentToken().value);
             advance(); // String literal Token überspringen
+        } else if (currentToken().type == TokenType::INT_LITERAL) {
+            expression = std::make_unique<StringLiteralNode>(currentToken().value);
+            advance(); // String literal Token überspringen
         } else if (currentToken().type == TokenType::IDENTIFIER) { // Hier ID für die Variablen
             expression = std::make_unique<VarNode>(currentToken().value);
             advance(); // Identifier Token überspringen
@@ -274,6 +277,11 @@ private:
             std::string stringValue = currentToken().value;
             advance(); // String literal Token überspringen
             return std::make_unique<StringLiteralNode>(stringValue);
+        } else if (currentToken().type == TokenType::INT_LITERAL) {
+            std::string stringValue = currentToken().value;
+            int intValue = std::stoi(stringValue);
+            advance(); // String literal Token überspringen
+            return std::make_unique<IntLiteralNode>(intValue);
         } else if (currentToken().type == TokenType::IDENTIFIER) {
             std::string varName = currentToken().value;
             advance(); // Identifier Token überspringen
@@ -335,6 +343,8 @@ private:
 
     void analyzeExpression(const ASTNode& expression) {
         if (dynamic_cast<const StringLiteralNode*>(&expression)) {
+            // Hier kannst du überprüfen, ob es ein StringLiteral ist
+        } else if (dynamic_cast<const IntLiteralNode*>(&expression)) {
             // Hier kannst du überprüfen, ob es ein StringLiteral ist
         } else if (const auto* varNode = dynamic_cast<const VarNode*>(&expression)) {
             // Hier kannst du überprüfen, ob es eine gültige Variable ist
@@ -399,6 +409,8 @@ private:
         // Überprüfen, ob der Ausdruck ein StringLiteralNode ist
         if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
             code += "\"" + strNode->value + "\""; // Wert des String-Literals
+        } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
+            code += std::to_string(intNode->value); // Wert des Int-Literals
         } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
             code += varNode->name; // Wert einer Variablen
         }
@@ -432,6 +444,8 @@ private:
         std::string value;
         if (auto strNode = dynamic_cast<StringLiteralNode*>(varDeclNode.expression.get())) {
             value = strNode->value; // Den Wert aus dem StringLiteralNode abrufen
+        } else if (auto intNode = dynamic_cast<IntLiteralNode*>(varDeclNode.expression.get())) {
+            value = std::to_string(intNode->value); // Den Wert aus dem StringLiteralNode abrufen
         } else if (auto varNode = dynamic_cast<VarNode*>(varDeclNode.expression.get())) {
             // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
             if (variables.find(varNode->name) != variables.end()) {
@@ -457,6 +471,8 @@ private:
             }
         } else if (auto strNode = dynamic_cast<StringLiteralNode*>(printNode.expression.get())) {
             output = strNode->value; // String-Wert
+        } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.expression.get())) {
+            output = std::to_string(intNode->value); // String-Wert
         } else {
             throw std::runtime_error("Unrecognized expression in print statement");
         }
