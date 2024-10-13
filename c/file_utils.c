@@ -4,35 +4,31 @@
 #include <string.h>
 
 char* read_file(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
+    FILE *file;
+    char *buffer;
+    long file_size;
+
+    file = fopen(filename, "rb");
+    if (file == NULL) {
+        printf("Couldn't open file!\n");
         return NULL;
     }
 
     fseek(file, 0, SEEK_END);
-    long length = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    file_size = ftell(file);
+    rewind(file);
 
-    char *content = (char *)malloc(length + 1);
-    if (content) {
-        fread(content, 1, length, file);
-        content[length] = '\0'; // Null-terminate the string
+    buffer = (char*)malloc((file_size + 1) * sizeof(char));
+    if (buffer == NULL) {
+        printf("ERROR!\n");
+        fclose(file);
+        return NULL;
     }
+
+    fread(buffer, sizeof(char), file_size, file);
+    buffer[file_size] = '\0';
+
     fclose(file);
 
-    int count = 0;
-
-    const char* str = content;
-    
-    // Loop through the string until the null terminator is reached
-    while (*str != '\0') {
-        if (*str == '\n') {
-            count++;
-        }
-        str++;
-    }
-
-    content[strlen(content) - count] = '\0';
-
-    return content;
+    return buffer;
 }

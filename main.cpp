@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <set>
+#include <cstring>
 
 #include "c++\String.hpp"
 #include "c++\Error.hpp"
@@ -97,7 +98,9 @@ public:
     void print(int indent = 0) const override {
         std::cout << std::string(indent, ' ') << "ProgramNode:\n";
         for (const auto& statement : statements) {
-            statement->print(indent + 2); // Indentieren für untergeordnete Knoten
+            if(statement != nullptr) {
+                statement->print(indent + 2); // Indentieren für untergeordnete Knoten
+            }
         }
     }
 };
@@ -391,7 +394,7 @@ private:
     }
 
     std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
-        std::string code = varDeclNode.varName + " = ";
+        std::string code = "var " + varDeclNode.varName + " = ";
         
         // Überprüfen, ob der Ausdruck ein StringLiteralNode ist
         if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
@@ -476,26 +479,57 @@ void writeToFile(const std::string& filename, const std::string& content) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        Error::e1.printErrorMessage();
+        //Error::e1.printErrorMessage();
         return 1;
     }
 
-    char* file_content = read_file(argv[1]);
-    if (!file_content) {
-        Error::e2.printErrorMessage();
-        return 1;
-    }
-
+    // Debug flags
+    bool debugShowFile = false;
     bool debugShowTokens = false;
     bool debugShowAST = false;
     bool debugShowCompiled = false;
 
+    // Operational flags
     bool compile = true;
     bool interpret = true;
+
+    char *filename;
+
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "--show-filecontent") == 0 || strcmp(argv[i], "--filecontent") == 0 || strcmp(argv[i], "--f") == 0) {
+            debugShowFile = true;
+        } else if (strcmp(argv[i], "--show-tokens") == 0 || strcmp(argv[i], "--tokens") == 0 || strcmp(argv[i], "--t") == 0) {
+            debugShowTokens = true;
+        } else if (strcmp(argv[i], "--show-ast") == 0 || strcmp(argv[i], "--ast") == 0 || strcmp(argv[i], "--a") == 0) {
+            debugShowAST = true;
+        } else if (strcmp(argv[i], "--show-compiled") == 0 || strcmp(argv[i], "--compiled") == 0 || strcmp(argv[i], "--c") == 0) {
+            debugShowCompiled = true;
+        } else if (strcmp(argv[i], "--debug") == 0 || strcmp(argv[i], "--d") == 0) {
+            debugShowTokens = true;
+            debugShowAST = true;
+        } else if (strcmp(argv[i], "-c") == 0) {
+            compile = true;
+        } else if (strcmp(argv[i], "-i") == 0) {
+            interpret = true;
+        } else {
+            filename = argv[i];
+        }
+    }
+
+    char* file_content = read_file(filename);
+    if (!file_content) {
+        //Error::e2.printErrorMessage();
+        return 1;
+    }
 
     std::string code(file_content);
 
     code += ";";
+
+    if(debugShowFile) {
+        std::cout << "File Content:\n";
+        std::cout << code << "\n\n";
+    }
 
     std::vector<Token> tokens = tokenize(code);
 
@@ -538,6 +572,7 @@ int main(int argc, char* argv[]) {
                     break;
             }
         }
+        std::cout << "\n";
     }
 
     Parser parser(tokens);
@@ -552,8 +587,9 @@ int main(int argc, char* argv[]) {
     }
 
     if(debugShowAST) {
-        std::cout << "\nAST Structure:\n";
+        std::cout << "AST Structure:\n";
         programNode->print();
+        std::cout << "\n";
     }
 
     Interpreter interpreter;

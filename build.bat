@@ -27,9 +27,9 @@ for %%f in (%ASM_DIR%\*.asm) do (
 ::)
 
 :: C
-::for %%f in (%C_DIR%\*.c) do (
-::    %GCC% -m32 -c -o %OBJ_DIR%\%%~nf.o %%f
-::)
+for %%f in (%C_DIR%\*.c) do (
+    %GCC% -m32 -c -o %OBJ_DIR%\%%~nf.o %%f
+)
 
 :: MAIN
 %GCC% -m32 -o main.exe %OBJ_DIR%\*.obj %OBJ_DIR%\*.o -static
