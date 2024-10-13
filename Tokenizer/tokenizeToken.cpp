@@ -94,3 +94,11 @@ Token tokenizeComment(const std::string& code, size_t& i) {
     }
     return {TokenType::UNKNOWN, ""};
 }
+
+Token tokenizeArithmetic(const std::string& code, size_t& i) {
+    if (code[i] == '+') {
+        ++i; // Index erhöhen
+        return {TokenType::PLUS, "+"};
+    }
+    return {TokenType::UNKNOWN, std::to_string(code[i])};
+}

@@ -19,7 +19,8 @@
 
 enum class CompilerLanguages {
     Easy,
-    Python
+    Python,
+    JavaScript
 };
 
 // Hauptfunktion zur Tokenisierung
@@ -49,6 +50,12 @@ std::vector<Token> tokenize(const std::string& code) {
         if (commentToken.type != TokenType::UNKNOWN) {
             tokens.push_back({TokenType::NEWLINE, "\\n"});
             tokens.push_back(commentToken);
+            continue;
+        }
+
+        Token arithmeticToken = tokenizeArithmetic(code, i);
+        if (arithmeticToken.type != TokenType::UNKNOWN) {
+            tokens.push_back(arithmeticToken);
             continue;
         }
 
@@ -156,9 +163,10 @@ class VarDeclarationNode : public ASTNode {
 public:
     std::string varName; // Der Name der Variable
     std::unique_ptr<ASTNode> expression; // Ausdruck, der der Variable zugewiesen wird
+    bool first;
 
-    VarDeclarationNode(const std::string& name, std::unique_ptr<ASTNode> expr)
-        : varName(name), expression(std::move(expr)) {}
+    VarDeclarationNode(const std::string& name, std::unique_ptr<ASTNode> expr, bool firstDecl)
+        : varName(name), expression(std::move(expr)), first(firstDecl) {}
 
     void print(int indent = 0) const override {
         std::cout << std::string(indent, ' ') << "VarDeclarationNode: " << varName << "\n";
@@ -186,6 +194,16 @@ public:
     void print(int indent = 0) const override {
         std::cout << std::string(indent, ' ') << "CommentNode: " << comment << "\n";
     }
+};
+
+class BinaryExpressionNode : public ASTNode {
+public:
+    std::unique_ptr<ASTNode> left;
+    std::unique_ptr<ASTNode> right;
+    std::string op; // e.g., "+"
+
+    BinaryExpressionNode(std::unique_ptr<ASTNode> left, std::unique_ptr<ASTNode> right, const std::string& op)
+        : left(std::move(left)), right(std::move(right)), op(op) {}
 };
 
 // Parser-Klasse
@@ -246,14 +264,20 @@ private:
         }
 
         if (currentToken().type == TokenType::VAR) {
-            return parseVarDeclaration();
+            return parseVarDeclaration(true);
+        }
+
+        if (currentToken().type == TokenType::IDENTIFIER) {
+            return parseVarDeclaration(false);
         }
 
         throw std::runtime_error("Unrecognized statement");
     }
 
-    std::unique_ptr<ASTNode> parseVarDeclaration() {
-        advance(); // var Token überspringen
+    std::unique_ptr<ASTNode> parseVarDeclaration(bool var) {
+        if(var) {
+            advance();
+        }
 
         if (currentToken().type != TokenType::IDENTIFIER) {
             throw std::runtime_error("Expected variable name after 'var'");
@@ -268,7 +292,7 @@ private:
 
         auto expression = parseExpression(); // Hier den Ausdruck parsen
 
-        return std::make_unique<VarDeclarationNode>(varName, std::move(expression));
+        return std::make_unique<VarDeclarationNode>(varName, std::move(expression), var);
     }
 
     // Eine Print-Anweisung parsen
@@ -309,9 +333,12 @@ private:
             return std::make_unique<StringLiteralNode>(stringValue);
         } else if (currentToken().type == TokenType::INT_LITERAL) {
             std::string stringValue = currentToken().value;
+            auto left = currentToken();
             int intValue = std::stoi(stringValue);
             advance(); // String literal Token überspringen
-            return std::make_unique<IntLiteralNode>(intValue);
+            if(currentToken().type == TokenType::SEMICOLON || currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::CLOSE_PARENTHESIS) {
+                return std::make_unique<IntLiteralNode>(intValue);
+            }
         } else if (currentToken().type == TokenType::IDENTIFIER) {
             std::string varName = currentToken().value;
             advance(); // Identifier Token überspringen
@@ -414,8 +441,10 @@ public:
             return Easy(programNode).generateCode();
         case CompilerLanguages::Python:
             return Python(programNode).generateCode();
+        case CompilerLanguages::JavaScript:
+            return JavaScript(programNode).generateCode();
         default:
-            return nullptr;
+            return "";
         }
     }
 
@@ -455,7 +484,12 @@ private:
         }
 
         std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
-            std::string code = "var " + varDeclNode.varName + " = ";
+            std::string code;
+            if(varDeclNode.first) {
+                code = "var " + varDeclNode.varName + " = ";
+            } else {
+                code = varDeclNode.varName + " = ";
+            }
 
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
                 code += "\"" + strNode->value + "\"";
@@ -533,6 +567,67 @@ private:
             }
         }
     };
+
+    class JavaScript {
+    public:
+        JavaScript(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
+
+        std::string generateCode() {
+            std::string code = "";
+            for (const auto& statement : programNode->statements) {
+                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
+                    code += generatePrintCode(*printNode);
+                } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
+                    code += generateVarDeclarationCode(*varDeclNode);
+                } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
+                    code += generateCommentCode(*commentNode);
+                }
+            }
+            return code;
+        }
+
+    private:
+        std::shared_ptr<ProgramNode> programNode;
+
+        std::string generatePrintCode(const PrintNode& printNode) {
+            // Check if expression is a variable or literal
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
+                return "console.log ( \"" + strNode->value + "\" )\n";
+            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
+                return "console.log ( " + varNode->name + " )\n";
+            }
+
+            throw std::runtime_error("Error: Unsupported print expression");
+        }
+
+        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
+            std::string code;
+            if(varDeclNode.first) {
+                code = "let " + varDeclNode.varName + " = ";
+            } else {
+                code = varDeclNode.varName + " = ";
+            }
+
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
+                code += "\"" + strNode->value + "\"";
+            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
+                code += std::to_string(intNode->value);
+            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
+                code += varNode->name;
+            }
+
+            code += "\n";
+            return code;
+        }
+
+        std::string generateCommentCode(const CommentNode& commentNode) {
+            if(commentNode.comment[0] != ' ') {
+                return "// " + commentNode.comment + "\n";
+            } else {
+                return "//" + commentNode.comment + "\n";
+            }
+        }
+    };
 };
 
 class Interpreter {
@@ -567,6 +662,16 @@ private:
                 value = variables[varNode->name]; // Wert aus der Map abrufen
             } else {
                 throw std::runtime_error("Variable not found: " + varNode->name);
+            }
+        }
+
+        if(variables.find(varDeclNode.varName) != variables.end()) {
+            if(varDeclNode.first) {
+                throw std::runtime_error("Variable has already been defined: " + varDeclNode.varName);
+            }
+        } else {
+            if(!varDeclNode.first) {
+                throw std::runtime_error("Variable hasn't been defined: " + varDeclNode.varName);
             }
         }
 
@@ -627,6 +732,7 @@ int main(int argc, char* argv[]) {
     // Compiler Languages
     bool easy = true;
     bool python = false;
+    bool javascript = false;
 
     char *filename;
 
@@ -652,9 +758,12 @@ int main(int argc, char* argv[]) {
             easy = true;
         } else if (strcmp(argv[i], "--py") == 0 || strcmp(argv[i], "--python") == 0) {
             python = true;
+        } else if (strcmp(argv[i], "--js") == 0 || strcmp(argv[i], "--javascript") == 0) {
+            javascript = true;
         } else if (strcmp(argv[i], "--c-to-all") == 0 || strcmp(argv[i], "--compile-to-all") == 0) {
             easy = true;
             python = true;
+            javascript = true;
         } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "-output") == 0) {
             outputDirectory = argv[i + 1];
             ++i;
@@ -691,7 +800,7 @@ int main(int argc, char* argv[]) {
                     std::cout << "Token: STRING_LITERAL, Value: \"" << token.value << "\"\n";
                     break;
                     case TokenType::INT_LITERAL:
-                    std::cout << "Token: INT_LITERAL, Value: \"" << token.value << "\"\n";
+                    std::cout << "Token: INT_LITERAL, Value: " << token.value << "\n";
                     break;
                 case TokenType::OPEN_PARENTHESIS:
                     std::cout << "Token: OPEN_PARENTHESIS, Value: " << token.value << "\n";
@@ -716,6 +825,18 @@ int main(int argc, char* argv[]) {
                     break;
                 case TokenType::COMMENT:
                     std::cout << "Token: COMMENT, Value: " << token.value << "\n";
+                    break;
+                case TokenType::PLUS:
+                    std::cout << "Token: PLUS, Value: " << token.value << "\n";
+                    break;
+                case TokenType::MINUS:
+                    std::cout << "Token: MINUS, Value: " << token.value << "\n";
+                    break;
+                case TokenType::STAR:
+                    std::cout << "Token: STAR, Value: " << token.value << "\n";
+                    break;
+                case TokenType::SLASH:
+                    std::cout << "Token: SLASH, Value: " << token.value << "\n";
                     break;
                 default:
                     std::cout << "Token: UNKNOWN, Value: " << token.value << "\n";
@@ -753,6 +874,9 @@ int main(int argc, char* argv[]) {
     if(compile) {
         if(easy) {
             std::string compiled = compiler.generateCode(CompilerLanguages::Easy);
+            if(compiled.empty()) {
+                std::cerr << "Compiled Code is empty!!!";
+            }
 
             writeToFile(outputDirectory + ".easy", compiled);
 
@@ -764,11 +888,28 @@ int main(int argc, char* argv[]) {
 
         if(python) {
             std::string compiled = compiler.generateCode(CompilerLanguages::Python);
+            if(compiled.empty()) {
+                std::cerr << "Compiled Code is empty!!!";
+            }
 
             writeToFile(outputDirectory + ".py", compiled);
 
             if(debugShowCompiled) {
                 std::cout << "\nCompiled Code to Python:\n";
+                std::cout << compiled;
+            }
+        }
+
+        if(javascript) {
+            std::string compiled = compiler.generateCode(CompilerLanguages::JavaScript);
+            if(compiled.empty()) {
+                std::cerr << "Compiled Code is empty!!!";
+            }
+
+            writeToFile(outputDirectory + ".js", compiled);
+
+            if(debugShowCompiled) {
+                std::cout << "\nCompiled Code to JavaScript:\n";
                 std::cout << compiled;
             }
         }

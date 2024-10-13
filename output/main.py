@@ -4,3 +4,4 @@ int = 1
 # Comment Test with '#'
 print ( str )
 print ( int )
+int = 2

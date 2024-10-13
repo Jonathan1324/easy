@@ -10,6 +10,12 @@ enum class TokenType {
     // Literaltoken
     STRING_LITERAL,
     INT_LITERAL,
+
+    // Arithmetik
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
     
     // Symboltoken
     OPEN_PARENTHESIS,
