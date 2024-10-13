@@ -17,6 +17,11 @@
 
 #include "Tokenizer\tokenizeToken.cpp"
 
+enum class CompilerLanguages {
+    Easy,
+    Python
+};
+
 // Hauptfunktion zur Tokenisierung
 std::vector<Token> tokenize(const std::string& code) {
     std::vector<Token> tokens;
@@ -402,55 +407,124 @@ class Compiler {
 public:
     explicit Compiler(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
 
-    std::string generateCode() {
-        std::string code = "";
-        for (const auto& statement : programNode->statements) {
-            if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
-                code += generatePrintCode(*printNode);
-            } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
-                code += generateVarDeclarationCode(*varDeclNode);
-            } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
-                code += generateCommentCode(*commentNode);
-            }
+    std::string generateCode(const CompilerLanguages language) {
+        switch (language)
+        {
+        case CompilerLanguages::Easy:
+            return Easy(programNode).generateCode();
+        case CompilerLanguages::Python:
+            return Python(programNode).generateCode();
+        default:
+            return nullptr;
         }
-        return code;
     }
 
 private:
     std::shared_ptr<ProgramNode> programNode;
 
-    std::string generatePrintCode(const PrintNode& printNode) {
-        // Überprüfen, ob der Ausdruck eine Variable ist oder ein Literal
-        if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-            return "print ( \"" + strNode->value + "\" )\n"; // Ausgabe eines String-Literals
-        } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-            return "print ( " + varNode->name + " )\n"; // Ausgabe einer Variablen
+    class Easy {
+    public:
+        Easy(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
+
+        std::string generateCode() {
+            std::string code = "";
+            for (const auto& statement : programNode->statements) {
+                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
+                    code += generatePrintCode(*printNode);
+                } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
+                    code += generateVarDeclarationCode(*varDeclNode);
+                } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
+                    code += generateCommentCode(*commentNode);
+                }
+            }
+            return code;
         }
 
-        throw std::runtime_error("Error: Unsupported print expression");
-    }
+    private:
+        std::shared_ptr<ProgramNode> programNode;
 
-    std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
-        std::string code = "var " + varDeclNode.varName + " = ";
-        
-        // Überprüfen, ob der Ausdruck ein StringLiteralNode ist
-        if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
-            code += "\"" + strNode->value + "\""; // Wert des String-Literals
-        } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
-            code += std::to_string(intNode->value); // Wert des Int-Literals
-        } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
-            code += varNode->name; // Wert einer Variablen
+        std::string generatePrintCode(const PrintNode& printNode) {
+            // Check if expression is a variable or literal
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
+                return "print ( \"" + strNode->value + "\" )\n";
+            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
+                return "print ( " + varNode->name + " )\n";
+            }
+
+            throw std::runtime_error("Error: Unsupported print expression");
         }
 
-        code += "\n"; // Zeilenumbruch hinzufügen
-        return code;
-    }
+        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
+            std::string code = "var " + varDeclNode.varName + " = ";
 
-    std::string generateCommentCode(const CommentNode& commentNode) {
-        std::string code = "//" + commentNode.comment + "\n";
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
+                code += "\"" + strNode->value + "\"";
+            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
+                code += std::to_string(intNode->value);
+            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
+                code += varNode->name;
+            }
 
-        return code;
-    }
+            code += "\n";
+            return code;
+        }
+
+        std::string generateCommentCode(const CommentNode& commentNode) {
+            return "// " + commentNode.comment + "\n";
+        }
+    };
+
+    class Python {
+    public:
+        Python(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
+
+        std::string generateCode() {
+            std::string code = "";
+            for (const auto& statement : programNode->statements) {
+                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
+                    code += generatePrintCode(*printNode);
+                } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
+                    code += generateVarDeclarationCode(*varDeclNode);
+                } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
+                    code += generateCommentCode(*commentNode);
+                }
+            }
+            return code;
+        }
+
+    private:
+        std::shared_ptr<ProgramNode> programNode;
+
+        std::string generatePrintCode(const PrintNode& printNode) {
+            // Check if expression is a variable or literal
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
+                return "print ( \"" + strNode->value + "\" )\n";
+            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
+                return "print ( " + varNode->name + " )\n";
+            }
+
+            throw std::runtime_error("Error: Unsupported print expression");
+        }
+
+        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
+            std::string code = varDeclNode.varName + " = ";
+
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
+                code += "\"" + strNode->value + "\"";
+            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
+                code += std::to_string(intNode->value);
+            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
+                code += varNode->name;
+            }
+
+            code += "\n";
+            return code;
+        }
+
+        std::string generateCommentCode(const CommentNode& commentNode) {
+            return "# " + commentNode.comment + "\n";
+        }
+    };
 };
 
 class Interpreter {
@@ -542,6 +616,10 @@ int main(int argc, char* argv[]) {
     bool compile = true;
     bool interpret = true;
 
+    // Compiler Languages
+    bool easy = true;
+    bool python = false;
+
     char *filename;
 
     for (int i = 1; i < argc; ++i) {
@@ -560,6 +638,13 @@ int main(int argc, char* argv[]) {
             compile = true;
         } else if (strcmp(argv[i], "-i") == 0) {
             interpret = true;
+        } else if (strcmp(argv[i], "--eas") == 0 || strcmp(argv[i], "--easy")) {
+            easy = true;
+        } else if (strcmp(argv[i], "--py") == 0 || strcmp(argv[i], "--python") == 0) {
+            python = true;
+        } else if (strcmp(argv[i], "--c-to-all") == 0 || strcmp(argv[i], "--compile-to-all") == 0) {
+            easy = true;
+            python = true;
         } else {
             filename = argv[i];
         }
@@ -653,13 +738,26 @@ int main(int argc, char* argv[]) {
     Compiler compiler(std::move(programNode));
 
     if(compile) {
-        std::string compiled = compiler.generateCode();
+        if(easy) {
+            std::string compiled = compiler.generateCode(CompilerLanguages::Easy);
 
-        writeToFile("output.easy", compiled);
+            writeToFile("output.easy", compiled);
 
-        if(debugShowCompiled) {
-            std::cout << "\nCompiled Code:\n";
-            std::cout << compiled;
+            if(debugShowCompiled) {
+                std::cout << "\nCompiled Code to Easy:\n";
+                std::cout << compiled;
+            }
+        }
+
+        if(python) {
+            std::string compiled = compiler.generateCode(CompilerLanguages::Python);
+
+            writeToFile("output.py", compiled);
+
+            if(debugShowCompiled) {
+                std::cout << "\nCompiled Code to Python:\n";
+                std::cout << compiled;
+            }
         }
     }
 

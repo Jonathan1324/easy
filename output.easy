@@ -1,6 +1,6 @@
 var str = "Hello, World!!!"
-//Comment Test with '//'
+// Comment Test with '//'
 var int = 1
-//Comment Test with '#'
+// Comment Test with '#'
 print ( str )
 print ( int )
