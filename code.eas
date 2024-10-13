@@ -6,3 +6,7 @@ print(str)
 print(int)
 
 int = 2
+
+print(int)
+print("Hello")
+print(25)

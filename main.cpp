@@ -20,7 +20,11 @@
 enum class CompilerLanguages {
     Easy,
     Python,
-    JavaScript
+    JavaScript,
+    GW_BASIC,
+    QuickBASIC,
+    Fortran77,
+    Fortran90
 };
 
 // Hauptfunktion zur Tokenisierung
@@ -443,6 +447,14 @@ public:
             return Python(programNode).generateCode();
         case CompilerLanguages::JavaScript:
             return JavaScript(programNode).generateCode();
+        case CompilerLanguages::GW_BASIC:
+            return GW_BASIC(programNode).generateCode();
+        case CompilerLanguages::QuickBASIC:
+            return QuickBASIC(programNode).generateCode();
+        case CompilerLanguages::Fortran77:
+            return "";
+        case CompilerLanguages::Fortran90:
+            return "";
         default:
             return "";
         }
@@ -628,6 +640,132 @@ private:
             }
         }
     };
+
+    class GW_BASIC {
+    public:
+        GW_BASIC(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
+
+        std::string generateCode() {
+            std::string code = "";
+            for (const auto& statement : programNode->statements) {
+                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
+                    code += generatePrintCode(*printNode);
+                } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
+                    code += generateVarDeclarationCode(*varDeclNode);
+                } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
+                    code += generateCommentCode(*commentNode);
+                }
+            }
+            return code;
+        }
+
+    private:
+        std::shared_ptr<ProgramNode> programNode;
+
+        std::string generatePrintCode(const PrintNode& printNode) {
+            // Check if expression is a variable or literal
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
+                return "PRINT \"" + strNode->value + "\"\n";
+            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
+                return "PRINT " + varNode->name + "\n";
+            }
+
+            throw std::runtime_error("Error: Unsupported print expression");
+        }
+
+        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
+            std::string code = varDeclNode.varName + " = ";
+
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
+                code += "\"" + strNode->value + "\"";
+            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
+                code += std::to_string(intNode->value);
+            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
+                code += varNode->name;
+            }
+
+            code += "\n";
+            return code;
+        }
+
+        std::string generateCommentCode(const CommentNode& commentNode) {
+            if(commentNode.comment[0] != ' ') {
+                return "' " + commentNode.comment + "\n";
+            } else {
+                return "'" + commentNode.comment + "\n";
+            }
+        }
+    };
+
+    class QuickBASIC {
+    public:
+        QuickBASIC(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
+
+        std::string generateCode() {
+            std::string code = "";
+            for (const auto& statement : programNode->statements) {
+                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
+                    code += generatePrintCode(*printNode);
+                } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
+                    code += generateVarDeclarationCode(*varDeclNode);
+                } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
+                    code += generateCommentCode(*commentNode);
+                }
+            }
+            return code;
+        }
+
+    private:
+        std::shared_ptr<ProgramNode> programNode;
+
+        std::string generatePrintCode(const PrintNode& printNode) {
+            // Check if expression is a variable or literal
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
+                return "PRINT \"" + strNode->value + "\"\n";
+            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
+                return "PRINT " + varNode->name + "\n";
+            }
+
+            throw std::runtime_error("Error: Unsupported print expression");
+        }
+
+        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
+            std::string code = "";
+
+            if(varDeclNode.first) {
+                code = "DIM " + varDeclNode.varName + " AS ";
+
+                if(auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
+                    code += "STRING";
+                } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
+                    code += "INTEGER";
+                }
+
+                code += "\n";
+            }
+            
+            code += varDeclNode.varName + " = ";
+
+            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
+                code += "\"" + strNode->value + "\"";
+            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
+                code += std::to_string(intNode->value);
+            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
+                code += varNode->name;
+            }
+
+            code += "\n";
+            return code;
+        }
+
+        std::string generateCommentCode(const CommentNode& commentNode) {
+            if(commentNode.comment[0] != ' ') {
+                return "' " + commentNode.comment + "\n";
+            } else {
+                return "'" + commentNode.comment + "\n";
+            }
+        }
+    };
 };
 
 class Interpreter {
@@ -733,6 +871,10 @@ int main(int argc, char* argv[]) {
     bool easy = true;
     bool python = false;
     bool javascript = false;
+    bool GW_BASIC = false;
+    bool QuickBASIC = false;
+    bool Fortran77 = false;
+    bool Fortran90 = false;
 
     char *filename;
 
@@ -760,10 +902,28 @@ int main(int argc, char* argv[]) {
             python = true;
         } else if (strcmp(argv[i], "--js") == 0 || strcmp(argv[i], "--javascript") == 0) {
             javascript = true;
+        } else if (strcmp(argv[i], "--f77") == 0 || strcmp(argv[i], "--fortran-77") == 0 || strcmp(argv[i], "--fortran77") == 0) {
+            Fortran77 = true;
+        } else if (strcmp(argv[i], "--f90") == 0 || strcmp(argv[i], "--fortran-90") == 0 || strcmp(argv[i], "--fortran90") == 0) {
+            Fortran90 = true;
+        } else if (strcmp(argv[i], "--f") == 0 || strcmp(argv[i], "--fortran") == 0) {
+            Fortran77 = true;
+            Fortran90 = true;
+        } else if (strcmp(argv[i], "--gw-b") == 0 || strcmp(argv[i], "--gw-basic") == 0 || strcmp(argv[i], "--gwbasic") == 0) {
+            Fortran77 = true;
+        } else if (strcmp(argv[i], "--qb") == 0 || strcmp(argv[i], "--quick-basic") == 0 || strcmp(argv[i], "--quickbasic") == 0) {
+            Fortran90 = true;
+        } else if (strcmp(argv[i], "--b") == 0 || strcmp(argv[i], "--basic") == 0) {
+            GW_BASIC = true;
+            QuickBASIC = true;
         } else if (strcmp(argv[i], "--c-to-all") == 0 || strcmp(argv[i], "--compile-to-all") == 0) {
             easy = true;
             python = true;
             javascript = true;
+            GW_BASIC = true;
+            QuickBASIC = true;
+            Fortran77 = true;
+            Fortran90 = true;
         } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "-output") == 0) {
             outputDirectory = argv[i + 1];
             ++i;
@@ -910,6 +1070,62 @@ int main(int argc, char* argv[]) {
 
             if(debugShowCompiled) {
                 std::cout << "\nCompiled Code to JavaScript:\n";
+                std::cout << compiled;
+            }
+        }
+
+        if(GW_BASIC) {
+            std::string compiled = compiler.generateCode(CompilerLanguages::GW_BASIC);
+            if(compiled.empty()) {
+                std::cerr << "Compiled Code is empty!!!";
+            }
+
+            writeToFile(outputDirectory + ".bas", compiled);
+
+            if(debugShowCompiled) {
+                std::cout << "\nCompiled Code to GW-BASIC:\n";
+                std::cout << compiled;
+            }
+        }
+
+        if(QuickBASIC) {
+            std::string compiled = compiler.generateCode(CompilerLanguages::QuickBASIC);
+            if(compiled.empty()) {
+                std::cerr << "Compiled Code is empty!!!";
+            }
+
+            writeToFile(outputDirectory + ".quick.bas", compiled);
+
+            if(debugShowCompiled) {
+                std::cout << "\nCompiled Code to QuickBASIC:\n";
+                std::cout << compiled;
+            }
+        }
+
+        if(Fortran77) {
+            std::string compiled = compiler.generateCode(CompilerLanguages::Fortran77);
+            if(compiled.empty()) {
+                std::cerr << "Compiled Code is empty!!!";
+            }
+
+            writeToFile(outputDirectory + ".f", compiled);
+
+            if(debugShowCompiled) {
+                std::cout << "\nCompiled Code to Fortran 77:\n";
+                std::cout << compiled;
+            }
+        }
+
+        if(Fortran90) {
+            std::string compiled = compiler.generateCode(CompilerLanguages::Fortran90);
+            if(compiled.empty()) {
+                std::cerr << "Compiled Code is empty!!!";
+            }
+
+            writeToFile(outputDirectory + ".f90", compiled);
+
+            if(debugShowCompiled) {
+                std::cout << "\nCompiled Code to Fortran 99:\n";
                 std::cout << compiled;
             }
         }
