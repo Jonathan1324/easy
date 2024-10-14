@@ -387,7 +387,7 @@ private:
         return declaredVariables.count(varName) > 0; // Beispiel mit std::set oder std::unordered_set
     }
 
-     void analyzeVarDeclarationNode(const VarDeclarationNode& varDeclNode) {
+    void analyzeVarDeclarationNode(const VarDeclarationNode& varDeclNode) {
         // Überprüfen, ob der Variablenname ein gültiger Bezeichner ist
         if (varDeclNode.varName.empty()) {
             throw std::runtime_error("Error: Variable name cannot be empty.");
