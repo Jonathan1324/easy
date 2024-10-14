@@ -1074,6 +1074,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        /*
         if(GW_BASIC) {
             std::string compiled = compiler.generateCode(CompilerLanguages::GW_BASIC);
             if(compiled.empty()) {
@@ -1129,6 +1130,7 @@ int main(int argc, char* argv[]) {
                 std::cout << compiled;
             }
         }
+        */
     }
 
     return 0;
