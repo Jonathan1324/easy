@@ -10,6 +10,7 @@ enum class TokenType {
     // Literaltoken
     STRING_LITERAL,
     INT_LITERAL,
+    BOOL_LITERAL,
 
     // Arithmetik
     PLUS,

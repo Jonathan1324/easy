@@ -33,6 +33,12 @@ Token tokenizeLiteral(const std::string& code, size_t& i) {
             ++i; // Überspringt das schließende "
         }
         return {TokenType::STRING_LITERAL, stringLiteral};
+    } else if (code.substr(i, 4) == "true" && !(std::isalnum(code[i + 5])) || code.substr(i, 4) == "True" && !(std::isalnum(code[i + 5]))) {
+        i += 4;
+        return {TokenType::BOOL_LITERAL, "true"};
+    } else if (code.substr(i, 5) == "false" && !(std::isalnum(code[i + 6])) || code.substr(i, 5) == "False" && !(std::isalnum(code[i + 6]))) {
+        i += 5;
+        return {TokenType::BOOL_LITERAL, "false"};
     }
     return {TokenType::UNKNOWN, ""}; // Rückgabe UNKNOWN, wenn kein Token erkannt wurde
 }

@@ -2,9 +2,14 @@ var str = "Hello, World!!!"
 // Comment Test with '//'
 var int = 1
 // Comment Test with '#'
+var trueBool = True
+var falseBool = False
+var tBool = True
+var fBool = False
 print ( str )
 print ( int )
 int = 2
 print ( int )
 print ( "Hello" )
 print ( "25" )
+print ( tBool )

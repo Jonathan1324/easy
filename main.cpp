@@ -150,6 +150,17 @@ public:
     }
 };
 
+class BoolLiteralNode : public ASTNode {
+public:
+    bool value;
+
+    BoolLiteralNode(const bool& val) : value(val) {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "BoolLiteralNode: " << value << "\n";
+    }
+};
+
 class PrintNode : public ASTNode {
 public:
     std::unique_ptr<ASTNode> expression; // Der Ausdruck, der ausgegeben werden soll
@@ -343,6 +354,16 @@ private:
             if(currentToken().type == TokenType::SEMICOLON || currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::CLOSE_PARENTHESIS) {
                 return std::make_unique<IntLiteralNode>(intValue);
             }
+        } else if (currentToken().type == TokenType::BOOL_LITERAL) {
+            std::string stringValue = currentToken().value;
+            bool boolValue = false;
+            if(stringValue == "true") {
+                boolValue = true;
+            }
+            advance();
+            if(currentToken().type == TokenType::SEMICOLON || currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::CLOSE_PARENTHESIS) {
+                return std::make_unique<BoolLiteralNode>(boolValue);
+            }
         } else if (currentToken().type == TokenType::IDENTIFIER) {
             std::string varName = currentToken().value;
             advance(); // Identifier Token überspringen
@@ -406,6 +427,8 @@ private:
         if (dynamic_cast<const StringLiteralNode*>(&expression)) {
             // Hier kannst du überprüfen, ob es ein StringLiteral ist
         } else if (dynamic_cast<const IntLiteralNode*>(&expression)) {
+            // Hier kannst du überprüfen, ob es ein StringLiteral ist
+        } else if (dynamic_cast<const BoolLiteralNode*>(&expression)) {
             // Hier kannst du überprüfen, ob es ein StringLiteral ist
         } else if (const auto* varNode = dynamic_cast<const VarNode*>(&expression)) {
             // Hier kannst du überprüfen, ob es eine gültige Variable ist
@@ -484,12 +507,16 @@ private:
     private:
         std::shared_ptr<ProgramNode> programNode;
 
+        std::string newLine() {
+            return "\n";
+        }
+
         std::string generatePrintCode(const PrintNode& printNode) {
             // Check if expression is a variable or literal
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-                return "print ( \"" + strNode->value + "\" )\n";
+                return "print ( \"" + strNode->value + "\" )" + newLine();
             } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-                return "print ( " + varNode->name + " )\n";
+                return "print ( " + varNode->name + " )" + newLine();
             }
 
             throw std::runtime_error("Error: Unsupported print expression");
@@ -507,19 +534,25 @@ private:
                 code += "\"" + strNode->value + "\"";
             } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
                 code += std::to_string(intNode->value);
+            } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expression.get())) {
+                if(boolNode->value == true) {
+                    code += "True";
+                } else {
+                    code += "False";
+                }
             } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
                 code += varNode->name;
             }
 
-            code += "\n";
+            code += newLine();
             return code;
         }
 
         std::string generateCommentCode(const CommentNode& commentNode) {
             if(commentNode.comment[0] != ' ') {
-                return "// " + commentNode.comment + "\n";
+                return "// " + commentNode.comment + newLine();
             } else {
-                return "//" + commentNode.comment + "\n";
+                return "//" + commentNode.comment + newLine();
             }
         }
     };
@@ -545,12 +578,16 @@ private:
     private:
         std::shared_ptr<ProgramNode> programNode;
 
+        std::string newLine() {
+            return "\n";
+        }
+
         std::string generatePrintCode(const PrintNode& printNode) {
             // Check if expression is a variable or literal
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-                return "print ( \"" + strNode->value + "\" )\n";
+                return "print ( \"" + strNode->value + "\" )" + newLine();
             } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-                return "print ( " + varNode->name + " )\n";
+                return "print ( " + varNode->name + " )" + newLine();
             }
 
             throw std::runtime_error("Error: Unsupported print expression");
@@ -563,19 +600,25 @@ private:
                 code += "\"" + strNode->value + "\"";
             } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
                 code += std::to_string(intNode->value);
+            } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expression.get())) {
+                if(boolNode->value == true) {
+                    code += "True";
+                } else {
+                    code += "False";
+                }
             } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
                 code += varNode->name;
             }
 
-            code += "\n";
+            code += newLine();
             return code;
         }
 
         std::string generateCommentCode(const CommentNode& commentNode) {
             if(commentNode.comment[0] != ' ') {
-                return "# " + commentNode.comment + "\n";
+                return "# " + commentNode.comment + newLine();
             } else {
-                return "#" + commentNode.comment + "\n";
+                return "#" + commentNode.comment + newLine();
             }
         }
     };
@@ -601,12 +644,16 @@ private:
     private:
         std::shared_ptr<ProgramNode> programNode;
 
+        std::string newLine() {
+            return ";\n";
+        }
+
         std::string generatePrintCode(const PrintNode& printNode) {
             // Check if expression is a variable or literal
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-                return "console.log ( \"" + strNode->value + "\" )\n";
+                return "console.log ( \"" + strNode->value + "\" )" + newLine();
             } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-                return "console.log ( " + varNode->name + " )\n";
+                return "console.log ( " + varNode->name + " )" + newLine();
             }
 
             throw std::runtime_error("Error: Unsupported print expression");
@@ -624,19 +671,25 @@ private:
                 code += "\"" + strNode->value + "\"";
             } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
                 code += std::to_string(intNode->value);
+            } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expression.get())) {
+                if(boolNode->value == true) {
+                    code += "true";
+                } else {
+                    code += "false";
+                }
             } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
                 code += varNode->name;
             }
 
-            code += "\n";
+            code += newLine();
             return code;
         }
 
         std::string generateCommentCode(const CommentNode& commentNode) {
             if(commentNode.comment[0] != ' ') {
-                return "// " + commentNode.comment + "\n";
+                return "// " + commentNode.comment + newLine();
             } else {
-                return "//" + commentNode.comment + "\n";
+                return "//" + commentNode.comment + newLine();
             }
         }
     };
@@ -831,6 +884,12 @@ private:
             output = strNode->value; // String-Wert
         } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.expression.get())) {
             output = std::to_string(intNode->value); // String-Wert
+        } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.expression.get())) {
+            if (boolNode->value == true) {
+                output = "True";
+            } else {
+                output = "False";
+            }
         } else {
             throw std::runtime_error("Unrecognized expression in print statement");
         }
@@ -959,8 +1018,11 @@ int main(int argc, char* argv[]) {
                 case TokenType::STRING_LITERAL:
                     std::cout << "Token: STRING_LITERAL, Value: \"" << token.value << "\"\n";
                     break;
-                    case TokenType::INT_LITERAL:
+                case TokenType::INT_LITERAL:
                     std::cout << "Token: INT_LITERAL, Value: " << token.value << "\n";
+                    break;
+                case TokenType::BOOL_LITERAL:
+                    std::cout << "Token: BOOL_LITERAL, Value: " << token.value << "\n";
                     break;
                 case TokenType::OPEN_PARENTHESIS:
                     std::cout << "Token: OPEN_PARENTHESIS, Value: " << token.value << "\n";
