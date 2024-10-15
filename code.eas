@@ -16,4 +16,6 @@ print(int)
 print("Hello")
 print(25)
 
+print(falseBool)
 print(tBool)
+print(false)

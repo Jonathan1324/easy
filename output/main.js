@@ -12,4 +12,6 @@ int = 2;
 console.log ( int );
 console.log ( "Hello" );
 console.log ( "25" );
+console.log ( falseBool );
 console.log ( tBool );
+console.log ( "False" );

@@ -12,4 +12,6 @@ int = 2
 print ( int )
 print ( "Hello" )
 print ( "25" )
+print ( falseBool )
 print ( tBool )
+print ( "False" )

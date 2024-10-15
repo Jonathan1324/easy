@@ -326,6 +326,13 @@ private:
         } else if (currentToken().type == TokenType::INT_LITERAL) {
             expression = std::make_unique<StringLiteralNode>(currentToken().value);
             advance(); // String literal Token überspringen
+        } else if (currentToken().type == TokenType::BOOL_LITERAL) {
+            if(currentToken().value == "true") {
+                expression = std::make_unique<StringLiteralNode>("True");
+            } else {
+                expression = std::make_unique<StringLiteralNode>("False");
+            }
+            advance(); // String literal Token überspringen
         } else if (currentToken().type == TokenType::IDENTIFIER) { // Hier ID für die Variablen
             expression = std::make_unique<VarNode>(currentToken().value);
             advance(); // Identifier Token überspringen
@@ -844,9 +851,15 @@ private:
         // Hier interpretierst du den Ausdruck, um den Wert zu ermitteln
         std::string value;
         if (auto strNode = dynamic_cast<StringLiteralNode*>(varDeclNode.expression.get())) {
-            value = strNode->value; // Den Wert aus dem StringLiteralNode abrufen
+            value = strNode->value;
         } else if (auto intNode = dynamic_cast<IntLiteralNode*>(varDeclNode.expression.get())) {
-            value = std::to_string(intNode->value); // Den Wert aus dem StringLiteralNode abrufen
+            value = std::to_string(intNode->value);
+        }  else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(varDeclNode.expression.get())) {
+            if(boolNode->value == true) {
+                value = "True";
+            } else {
+                value = "False";
+            }
         } else if (auto varNode = dynamic_cast<VarNode*>(varDeclNode.expression.get())) {
             // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
             if (variables.find(varNode->name) != variables.end()) {
