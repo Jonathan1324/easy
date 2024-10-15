@@ -1,17 +1,2 @@
-let str = "Hello, World!!!";
-// Comment Test with '//';
-let int = 1;
-// Comment Test with '#';
-let trueBool = true;
-let falseBool = false;
-let tBool = true;
-let fBool = false;
-console.log ( str );
-console.log ( int );
-int = 2;
-console.log ( int );
-console.log ( "Hello" );
-console.log ( "25" );
-console.log ( falseBool );
-console.log ( tBool );
-console.log ( "False" );
+/* var str = "Hello, World!!!" // Comment Test with '//'var int = 1 #Comment Test with '#'var trueBool = truevar falseBool = falsevar tBool = Truevar fBool = Falseprint(str)print(int)int = 2print(int)print("Hello")print(25)print(falseBool)print(tBool)print(false)##;;
+*/

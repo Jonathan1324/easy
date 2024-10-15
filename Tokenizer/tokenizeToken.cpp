@@ -83,7 +83,20 @@ Token tokenizeAssignment(const std::string& code, size_t& i) {
 }
 
 Token tokenizeComment(const std::string& code, size_t& i) {
-    if (code[i] == '#' || code[i] == '/' && code[i + 1] == '/') {
+    if (code[i] == '#' && code[i + 1] == '#' || code[i] == '/' && code[i + 1] == '*') {
+        std::string comment = "\n";
+        i += 2;
+        while (i < code.length() && code[i] != '#' && code[i + 1] != '#' || i < code.length() && code[i] != '*' && code[i + 1] != '/') {
+            if(code[i] != '\n') {
+                comment += code[i];
+            }
+            ++i;
+        }
+        if (i < code.length() && code[i] == '#' && code[i + 1] == '#' || i < code.length() && code[i] == '*' && code[i + 1] == '/') {
+            i += 2;
+        }
+        return {TokenType::MULTICOMMENT, comment};
+    } else if (code[i] == '#' || code[i] == '/' && code[i + 1] == '/') {
         if(code[i] == '/') {
             ++i;
         }

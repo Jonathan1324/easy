@@ -203,8 +203,9 @@ public:
 class CommentNode : public ASTNode {
 public:
     std::string comment;
+    bool multiline;
 
-    CommentNode(const std::string& val) : comment(val) {}
+    CommentNode(const std::string& val, const bool& multi) : comment(val, multi) {}
 
     void print(int indent = 0) const override {
         std::cout << std::string(indent, ' ') << "CommentNode: " << comment << "\n";
@@ -235,7 +236,10 @@ public:
             if (currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::SEMICOLON) {
                 advance(); // Überspringe NEWLINE oder SEMICOLON
             } else if(currentToken().type == TokenType::COMMENT) {
-                programNode->statements.push_back(std::make_unique<CommentNode>(currentToken().value));
+                programNode->statements.push_back(std::make_unique<CommentNode>(currentToken().value, false));
+                advance();
+            } else if(currentToken().type == TokenType::MULTICOMMENT) {
+                programNode->statements.push_back(std::make_unique<CommentNode>(currentToken().value, true));
                 advance();
             } else {
                 throw std::runtime_error("Expected NEWLINE or SEMICOLON after statement");
@@ -267,10 +271,10 @@ private:
     // Die nächste Anweisung parsen
     std::unique_ptr<ASTNode> parseStatement() {
         if (currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::SEMICOLON) {
-            return nullptr; // Keine Anweisung zurückgeben
+            return nullptr;
         }
 
-        if(currentToken().type == TokenType::COMMENT) {
+        if(currentToken().type == TokenType::COMMENT || currentToken().type == TokenType::MULTICOMMENT) {
             return nullptr;
         }
 
@@ -356,11 +360,22 @@ private:
         } else if (currentToken().type == TokenType::INT_LITERAL) {
             std::string stringValue = currentToken().value;
             auto left = currentToken();
+            std::vector<ASTNode> values;
+
             int intValue = std::stoi(stringValue);
-            advance(); // String literal Token überspringen
-            if(currentToken().type == TokenType::SEMICOLON || currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::CLOSE_PARENTHESIS) {
-                return std::make_unique<IntLiteralNode>(intValue);
+
+            advance();
+            while(currentToken().type == TokenType::NEWLINE) {
+                std::cout << "H\n";
+                advance();
             }
+
+            std::cout << currentToken().value;
+
+            current--;
+
+            return std::make_unique<IntLiteralNode>(intValue);
+
         } else if (currentToken().type == TokenType::BOOL_LITERAL) {
             std::string stringValue = currentToken().value;
             bool boolValue = false;
@@ -556,10 +571,18 @@ private:
         }
 
         std::string generateCommentCode(const CommentNode& commentNode) {
-            if(commentNode.comment[0] != ' ') {
-                return "// " + commentNode.comment + newLine();
+            if(commentNode.multiline) {
+                if(commentNode.comment[0] != ' ') {
+                    return "/* " + commentNode.comment + newLine() + "*/";
+                } else {
+                    return "/*" + commentNode.comment + newLine() + "*/";
+                }
             } else {
-                return "//" + commentNode.comment + newLine();
+                if(commentNode.comment[0] != ' ') {
+                    return "// " + commentNode.comment + newLine();
+                } else {
+                    return "//" + commentNode.comment + newLine();
+                }
             }
         }
     };
@@ -622,10 +645,18 @@ private:
         }
 
         std::string generateCommentCode(const CommentNode& commentNode) {
-            if(commentNode.comment[0] != ' ') {
-                return "# " + commentNode.comment + newLine();
+            if(commentNode.multiline) {
+                if(commentNode.comment[0] != ' ') {
+                    return "''' " + commentNode.comment + newLine() + "'''";
+                } else {
+                    return "'''" + commentNode.comment + newLine() + "'''";
+                }
             } else {
-                return "#" + commentNode.comment + newLine();
+                if(commentNode.comment[0] != ' ') {
+                    return "# " + commentNode.comment + newLine();
+                } else {
+                    return "#" + commentNode.comment + newLine();
+                }
             }
         }
     };
@@ -693,10 +724,18 @@ private:
         }
 
         std::string generateCommentCode(const CommentNode& commentNode) {
-            if(commentNode.comment[0] != ' ') {
-                return "// " + commentNode.comment + newLine();
+            if(commentNode.multiline) {
+                if(commentNode.comment[0] != ' ') {
+                    return "/* " + commentNode.comment + newLine() + "*/";
+                } else {
+                    return "/*" + commentNode.comment + newLine() + "*/";
+                }
             } else {
-                return "//" + commentNode.comment + newLine();
+                if(commentNode.comment[0] != ' ') {
+                    return "/* " + commentNode.comment + newLine() + "*/";
+                } else {
+                    return "/*" + commentNode.comment + newLine() + "*/";
+                }
             }
         }
     };

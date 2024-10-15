@@ -28,6 +28,7 @@ enum class TokenType {
     
     // Zusätzliche Token
     COMMENT,
+    MULTICOMMENT,
     UNKNOWN
 };
 
