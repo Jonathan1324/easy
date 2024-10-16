@@ -1,4 +1,4 @@
-##
+/*
 var str = "Hello, World!!!" // Comment Test with '//'
 
 var int = 1 #Comment Test with '#'
@@ -20,4 +20,7 @@ print(25)
 print(falseBool)
 print(tBool)
 print(false)
-##
+*/
+
+var test = 2
+print(test)

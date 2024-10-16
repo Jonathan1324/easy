@@ -10,8 +10,7 @@
 #include <cstring>
 
 #include "c++\String.hpp"
-#include "c++\Error.hpp"
-#include "c++\Arithmetic.hpp"
+#include "c++\Arithmetic.cpp"
 
 #include "c\file_utils.h"
 
@@ -208,18 +207,12 @@ public:
     CommentNode(const std::string& val, const bool& multi) : comment(val, multi) {}
 
     void print(int indent = 0) const override {
-        std::cout << std::string(indent, ' ') << "CommentNode: " << comment << "\n";
+        if(multiline) {
+            std::cout << std::string(indent, ' ') << "CommentNode: *Multiple Lines*\n";
+        } else {
+            std::cout << std::string(indent, ' ') << "CommentNode: " << comment << "\n";
+        }
     }
-};
-
-class BinaryExpressionNode : public ASTNode {
-public:
-    std::unique_ptr<ASTNode> left;
-    std::unique_ptr<ASTNode> right;
-    std::string op; // e.g., "+"
-
-    BinaryExpressionNode(std::unique_ptr<ASTNode> left, std::unique_ptr<ASTNode> right, const std::string& op)
-        : left(std::move(left)), right(std::move(right)), op(op) {}
 };
 
 // Parser-Klasse
@@ -359,20 +352,8 @@ private:
             return std::make_unique<StringLiteralNode>(stringValue);
         } else if (currentToken().type == TokenType::INT_LITERAL) {
             std::string stringValue = currentToken().value;
-            auto left = currentToken();
-            std::vector<ASTNode> values;
-
             int intValue = std::stoi(stringValue);
-
             advance();
-            while(currentToken().type == TokenType::NEWLINE) {
-                std::cout << "H\n";
-                advance();
-            }
-
-            std::cout << currentToken().value;
-
-            current--;
 
             return std::make_unique<IntLiteralNode>(intValue);
 
@@ -573,9 +554,9 @@ private:
         std::string generateCommentCode(const CommentNode& commentNode) {
             if(commentNode.multiline) {
                 if(commentNode.comment[0] != ' ') {
-                    return "/* " + commentNode.comment + newLine() + "*/";
+                    return "/* " + commentNode.comment + newLine() + "*/" + newLine();
                 } else {
-                    return "/*" + commentNode.comment + newLine() + "*/";
+                    return "/*" + commentNode.comment + newLine() + "*/" + newLine();
                 }
             } else {
                 if(commentNode.comment[0] != ' ') {
@@ -647,9 +628,9 @@ private:
         std::string generateCommentCode(const CommentNode& commentNode) {
             if(commentNode.multiline) {
                 if(commentNode.comment[0] != ' ') {
-                    return "''' " + commentNode.comment + newLine() + "'''";
+                    return "''' " + commentNode.comment + newLine() + "'''" + newLine();
                 } else {
-                    return "'''" + commentNode.comment + newLine() + "'''";
+                    return "'''" + commentNode.comment + newLine() + "'''" + newLine();
                 }
             } else {
                 if(commentNode.comment[0] != ' ') {
@@ -726,15 +707,15 @@ private:
         std::string generateCommentCode(const CommentNode& commentNode) {
             if(commentNode.multiline) {
                 if(commentNode.comment[0] != ' ') {
-                    return "/* " + commentNode.comment + newLine() + "*/";
+                    return "/* " + commentNode.comment + newLine() + "*/" + newLine();
                 } else {
-                    return "/*" + commentNode.comment + newLine() + "*/";
+                    return "/*" + commentNode.comment + newLine() + "*/" + newLine();
                 }
             } else {
                 if(commentNode.comment[0] != ' ') {
-                    return "/* " + commentNode.comment + newLine() + "*/";
+                    return "/* " + commentNode.comment + newLine() + "*/" + newLine();
                 } else {
-                    return "/*" + commentNode.comment + newLine() + "*/";
+                    return "/*" + commentNode.comment + newLine() + "*/" + newLine();
                 }
             }
         }

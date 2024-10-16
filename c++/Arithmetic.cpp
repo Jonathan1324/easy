@@ -1,5 +1,5 @@
 #include "Arithmetic.hpp"
-#include "Error.hpp"
+#include "Error.cpp"
 
 #include <iostream>
 #include <sstream>
