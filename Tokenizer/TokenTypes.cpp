@@ -4,6 +4,7 @@ enum class TokenType {
 
     // Variablen
     VAR,
+    CONST,
     IDENTIFIER,
     ASSIGNMENT,
     

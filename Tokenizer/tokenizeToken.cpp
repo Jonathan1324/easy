@@ -59,6 +59,9 @@ Token tokenizeKeyword(const std::string& code, size_t& i) {
     if (code.substr(i, 3) == "var") {
         i += 3;
         return {TokenType::VAR, "var"};
+    } else if (code.substr(i, 5) == "const") {
+        i += 5;
+        return {TokenType::CONST, "const"};
     }
     return {TokenType::UNKNOWN, ""};
 }

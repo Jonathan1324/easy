@@ -178,12 +178,23 @@ public:
     std::string varName; // Der Name der Variable
     std::unique_ptr<ASTNode> expression; // Ausdruck, der der Variable zugewiesen wird
     bool first;
+    bool constant;
 
-    VarDeclarationNode(const std::string& name, std::unique_ptr<ASTNode> expr, bool firstDecl)
-        : varName(name), expression(std::move(expr)), first(firstDecl) {}
+    VarDeclarationNode(const std::string& name, std::unique_ptr<ASTNode> expr, bool firstDecl, bool isConst)
+        : varName(name), expression(std::move(expr)), first(firstDecl), constant(isConst) {}
 
     void print(int indent = 0) const override {
         std::cout << std::string(indent, ' ') << "VarDeclarationNode: " << varName << "\n";
+        if(constant) {
+            std::cout << std::string(indent + 2, ' ') << "Const: True\n";
+        } else {
+            std::cout << std::string(indent + 2, ' ') << "Const: False\n";
+        }
+        if(first) {
+            std::cout << std::string(indent + 2, ' ') << "First Declaration: True\n";
+        } else {
+            std::cout << std::string(indent + 2, ' ') << "First Declaration: False\n";
+        }
         expression->print(indent + 2); // Drucke den Ausdruck
     }
 };
@@ -275,7 +286,7 @@ private:
             return parsePrintStatement();
         }
 
-        if (currentToken().type == TokenType::VAR) {
+        if (currentToken().type == TokenType::VAR || currentToken().type == TokenType::CONST) {
             return parseVarDeclaration(true);
         }
 
@@ -287,6 +298,12 @@ private:
     }
 
     std::unique_ptr<ASTNode> parseVarDeclaration(bool var) {
+        bool isConst = false;
+
+        if(currentToken().type == TokenType::CONST) {
+            isConst = true;
+        }
+
         if(var) {
             advance();
         }
@@ -304,7 +321,7 @@ private:
 
         auto expression = parseExpression(); // Hier den Ausdruck parsen
 
-        return std::make_unique<VarDeclarationNode>(varName, std::move(expression), var);
+        return std::make_unique<VarDeclarationNode>(varName, std::move(expression), var, isConst);
     }
 
     // Eine Print-Anweisung parsen
@@ -527,10 +544,18 @@ private:
 
         std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
             std::string code;
-            if(varDeclNode.first) {
-                code = "var " + varDeclNode.varName + " = ";
+            if(varDeclNode.constant) {
+                if(varDeclNode.first) {
+                    code = "const " + varDeclNode.varName + " = ";
+                } else {
+                    throw std::runtime_error("Constants can't be changed: " + varDeclNode.varName);
+                }
             } else {
-                code = varDeclNode.varName + " = ";
+                if(varDeclNode.first) {
+                    code = "var " + varDeclNode.varName + " = ";
+                } else {
+                    code = varDeclNode.varName + " = ";
+                }
             }
 
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
@@ -621,6 +646,10 @@ private:
                 code += varNode->name;
             }
 
+            if(varDeclNode.constant) {
+                code += "        # Constant";
+            }
+
             code += newLine();
             return code;
         }
@@ -680,10 +709,19 @@ private:
 
         std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
             std::string code;
-            if(varDeclNode.first) {
-                code = "let " + varDeclNode.varName + " = ";
+            
+            if(varDeclNode.constant) {
+                if(varDeclNode.first) {
+                    code = "const " + varDeclNode.varName + " = ";
+                } else {
+                    throw std::runtime_error("Constants can't be changed: " + varDeclNode.varName);
+                }
             } else {
-                code = varDeclNode.varName + " = ";
+                if(varDeclNode.first) {
+                    code = "let " + varDeclNode.varName + " = ";
+                } else {
+                    code = varDeclNode.varName + " = ";
+                }
             }
 
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
@@ -893,6 +931,10 @@ private:
             if(varDeclNode.first) {
                 throw std::runtime_error("Variable has already been defined: " + varDeclNode.varName);
             }
+
+            if(varDeclNode.constant) {
+                throw std::runtime_error("Constants can't be changed: " + varDeclNode.varName);
+            }
         } else {
             if(!varDeclNode.first) {
                 throw std::runtime_error("Variable hasn't been defined: " + varDeclNode.varName);
@@ -973,7 +1015,7 @@ int main(int argc, char* argv[]) {
     std::string outputDirectory = "./a";
 
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--show-filecontent") == 0 || strcmp(argv[i], "--filecontent") == 0 || strcmp(argv[i], "--f") == 0) {
+        if (strcmp(argv[i], "--show-filecontent") == 0 || strcmp(argv[i], "--filecontent") == 0 || strcmp(argv[i], "--fc") == 0) {
             debugShowFile = true;
         } else if (strcmp(argv[i], "--show-tokens") == 0 || strcmp(argv[i], "--tokens") == 0 || strcmp(argv[i], "--t") == 0) {
             debugShowTokens = true;
@@ -1071,6 +1113,9 @@ int main(int argc, char* argv[]) {
                     break;
                 case TokenType::VAR:
                     std::cout << "Token: VAR, Value: " << token.value << "\n";
+                    break;
+                case TokenType::CONST:
+                    std::cout << "Token: CONST, Value: " << token.value << "\n";
                     break;
                 case TokenType::IDENTIFIER:
                     std::cout << "Token: IDENTIFIER, Value: " << token.value << "\n";
