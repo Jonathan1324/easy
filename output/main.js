@@ -1,4 +1,2 @@
-let test = true;
-let numberTest = 1;
-let text = "Hi";
-const cTest = "Hi";
+let test = 1 + 1 * 2;
+console.log ( test );

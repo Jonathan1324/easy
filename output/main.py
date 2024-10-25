@@ -1,4 +1,2 @@
-test = True
-numberTest = 1
-text = "Hi"
-cTest = "Hi"        # Constant
+test = 1 + 1 * 2
+print ( test )

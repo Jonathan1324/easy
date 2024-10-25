@@ -127,6 +127,16 @@ Token tokenizeArithmetic(const std::string& code, size_t& i) {
     if (code[i] == '+') {
         ++i; // Index erhöhen
         return {TokenType::PLUS, "+"};
+    } else if (code[i] == '-') {
+        ++i; // Index erhöhen
+        return {TokenType::MINUS, "-"};
+    } else if (code[i] == '*') {
+        ++i; // Index erhöhen
+        return {TokenType::STAR, "*"};
+    } else if (code[i] == '/') {
+        ++i; // Index erhöhen
+        return {TokenType::SLASH, "/"};
     }
+
     return {TokenType::UNKNOWN, std::to_string(code[i])};
 }

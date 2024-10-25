@@ -160,6 +160,43 @@ public:
     }
 };
 
+class ArithmeticOperationNode : public ASTNode {
+public:
+    TokenType operation;
+
+    ArithmeticOperationNode(const TokenType& val) : operation(val) {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "ArithmeticOperationNode: ";
+
+        switch (operation)
+        {
+        case TokenType::PLUS:
+            std::cout << "PLUS - \"+\"";
+            break;
+        case TokenType::MINUS:
+            std::cout << "MINUS - \"-\"";
+            break;
+        case TokenType::STAR:
+            std::cout << "STAR - \"*\"";
+            break;
+        case TokenType::SLASH:
+            std::cout << "SLASH - \"/\"";
+            break;
+        case TokenType::OPEN_PARENTHESIS:
+            std::cout << "STAR - \"(\"";
+            break;
+        case TokenType::CLOSE_PARENTHESIS:
+            std::cout << "SLASH - \")\"";
+            break;
+        default:
+            break;
+        }
+
+        std::cout << "\n";
+    }
+};
+
 class PrintNode : public ASTNode {
 public:
     std::unique_ptr<ASTNode> expression; // Der Ausdruck, der ausgegeben werden soll
@@ -176,12 +213,12 @@ public:
 class VarDeclarationNode : public ASTNode {
 public:
     std::string varName; // Der Name der Variable
-    std::unique_ptr<ASTNode> expression; // Ausdruck, der der Variable zugewiesen wird
+    std::vector<std::unique_ptr<ASTNode>> expressions;
     bool first;
     bool constant;
 
-    VarDeclarationNode(const std::string& name, std::unique_ptr<ASTNode> expr, bool firstDecl, bool isConst)
-        : varName(name), expression(std::move(expr)), first(firstDecl), constant(isConst) {}
+    VarDeclarationNode(const std::string& name, std::vector<std::unique_ptr<ASTNode>> expr, bool firstDecl, bool isConst)
+        : varName(name), expressions(std::move(expr)), first(firstDecl), constant(isConst) {}
 
     void print(int indent = 0) const override {
         std::cout << std::string(indent, ' ') << "VarDeclarationNode: " << varName << "\n";
@@ -195,7 +232,10 @@ public:
         } else {
             std::cout << std::string(indent + 2, ' ') << "First Declaration: False\n";
         }
-        expression->print(indent + 2); // Drucke den Ausdruck
+        
+        for (const std::unique_ptr<ASTNode>& expression : expressions) {
+            expression->print(indent + 2); // Drucke den Ausdruck
+        }
     }
 };
 
@@ -319,9 +359,26 @@ private:
         }
         advance(); // '=' Token überspringen
 
-        auto expression = parseExpression(); // Hier den Ausdruck parsen
+        std::vector<std::unique_ptr<ASTNode>> expressions = std::vector<std::unique_ptr<ASTNode>>();
 
-        return std::make_unique<VarDeclarationNode>(varName, std::move(expression), var, isConst);
+        int brackets = 0;
+
+        while(currentToken().type != TokenType::SEMICOLON && currentToken().type != TokenType::NEWLINE && brackets >= 0) {
+            if(currentToken().type == TokenType::OPEN_PARENTHESIS) {
+                brackets += 1;
+            } else if(currentToken().type == TokenType::CLOSE_PARENTHESIS) {
+                brackets -= 1;
+            }
+
+            std::unique_ptr<ASTNode> expression = parseExpression();
+
+            expressions.push_back(std::move(expression));
+            if(currentToken().type == TokenType::SEMICOLON || currentToken().type == TokenType::NEWLINE || brackets < 0) {
+                break;
+            }
+        }
+
+        return std::make_unique<VarDeclarationNode>(varName, std::move(expressions), var, isConst);
     }
 
     // Eine Print-Anweisung parsen
@@ -357,6 +414,7 @@ private:
         if (currentToken().type != TokenType::CLOSE_PARENTHESIS) {
             throw std::runtime_error("Expected ')' after argument");
         }
+        
         advance(); // ')' Token überspringen
 
         return std::make_unique<PrintNode>(std::move(expression)); // Rückgabe eines neuen PrintNode
@@ -381,9 +439,12 @@ private:
                 boolValue = true;
             }
             advance();
-            if(currentToken().type == TokenType::SEMICOLON || currentToken().type == TokenType::NEWLINE || currentToken().type == TokenType::CLOSE_PARENTHESIS) {
-                return std::make_unique<BoolLiteralNode>(boolValue);
-            }
+            return std::make_unique<BoolLiteralNode>(boolValue);
+        } else if (currentToken().type == TokenType::PLUS || currentToken().type == TokenType::MINUS || currentToken().type == TokenType::STAR || currentToken().type == TokenType::SLASH || currentToken().type == TokenType::OPEN_PARENTHESIS || currentToken().type == TokenType::CLOSE_PARENTHESIS) {
+            std::string stringValue = currentToken().value;
+            TokenType type = currentToken().type;
+            advance();
+            return std::make_unique<ArithmeticOperationNode>(type);
         } else if (currentToken().type == TokenType::IDENTIFIER) {
             std::string varName = currentToken().value;
             advance(); // Identifier Token überspringen
@@ -435,9 +496,12 @@ private:
         }
 
         // Hier analysierst du den Ausdruck, der der Variable zugewiesen wird
-        if (varDeclNode.expression) {
-            // Hier könnte eine Methode aufgerufen werden, um den Ausdruck zu analysieren
-            analyzeExpression(*varDeclNode.expression);
+        if (!(varDeclNode.expressions.empty())) {
+
+            for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
+                const std::unique_ptr<ASTNode>& expression = varDeclNode.expressions[i];
+                analyzeExpression(*expression);
+            }
         } else {
             throw std::runtime_error("Error: Variable declaration must have an expression.");
         }
@@ -450,12 +514,12 @@ private:
             // Hier kannst du überprüfen, ob es ein StringLiteral ist
         } else if (dynamic_cast<const BoolLiteralNode*>(&expression)) {
             // Hier kannst du überprüfen, ob es ein StringLiteral ist
+        } else if (dynamic_cast<const ArithmeticOperationNode*>(&expression)) {
+            // Hier kannst du überprüfen, ob es ein StringLiteral ist
         } else if (const auto* varNode = dynamic_cast<const VarNode*>(&expression)) {
             // Hier kannst du überprüfen, ob es eine gültige Variable ist
             // Zum Beispiel, ob die Variable deklariert wurde
-            if (!isVariableDeclared(varNode->name)) {
-                throw std::runtime_error("Error: Variable '" + varNode->name + "' is not declared.");
-            }
+            
         } else {
             throw std::runtime_error("Error: Unsupported expression type.");
         }
@@ -491,9 +555,9 @@ public:
         case CompilerLanguages::JavaScript:
             return JavaScript(programNode).generateCode();
         case CompilerLanguages::GW_BASIC:
-            return GW_BASIC(programNode).generateCode();
+            return "";
         case CompilerLanguages::QuickBASIC:
-            return QuickBASIC(programNode).generateCode();
+            return "";
         case CompilerLanguages::Fortran77:
             return "";
         case CompilerLanguages::Fortran90:
@@ -558,6 +622,39 @@ private:
                 }
             }
 
+            for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
+                const std::unique_ptr<ASTNode>& expression = varDeclNode.expressions[i];
+
+                if (auto strNode = dynamic_cast<const StringLiteralNode*>(expression.get())) {
+                    code += "\"" + strNode->value + "\"";
+                } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(expression.get())) {
+                    code += std::to_string(intNode->value);
+                } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(expression.get())) {
+                    if(boolNode->value == true) {
+                        code += "True";
+                    } else {
+                        code += "False";
+                    }
+                } else if (auto varNode = dynamic_cast<const VarNode*>(expression.get())) {
+                    code += varNode->name;
+                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expression.get())) {
+                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
+                        code += " + ";
+                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
+                        code += " - ";
+                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
+                        code += " * ";
+                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
+                        code += " / ";
+                    } else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                        code += " ( ";
+                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
+                        code += " ) ";
+                    }
+                }
+            }
+
+            /*
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
                 code += "\"" + strNode->value + "\"";
             } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
@@ -571,6 +668,7 @@ private:
             } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
                 code += varNode->name;
             }
+            */
 
             code += newLine();
             return code;
@@ -632,6 +730,7 @@ private:
         std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
             std::string code = varDeclNode.varName + " = ";
 
+            /*
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
                 code += "\"" + strNode->value + "\"";
             } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
@@ -644,6 +743,39 @@ private:
                 }
             } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
                 code += varNode->name;
+            }
+            */
+            
+            for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
+                const std::unique_ptr<ASTNode>& expression = varDeclNode.expressions[i];
+
+                if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expressions[i].get())) {
+                    code += "\"" + strNode->value + "\"";
+                } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expressions[i].get())) {
+                    code += std::to_string(intNode->value);
+                } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expressions[i].get())) {
+                    if(boolNode->value == true) {
+                        code += "True";
+                    } else {
+                        code += "False";
+                    }
+                } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expressions[i].get())) {
+                    code += varNode->name;
+                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expression.get())) {
+                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
+                        code += " + ";
+                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
+                        code += " - ";
+                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
+                        code += " * ";
+                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
+                        code += " / ";
+                    } else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                        code += " ( ";
+                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
+                        code += " ) ";
+                    }
+                }
             }
 
             if(varDeclNode.constant) {
@@ -724,6 +856,39 @@ private:
                 }
             }
 
+            for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
+                const std::unique_ptr<ASTNode>& expression = varDeclNode.expressions[i];
+
+                if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expressions[i].get())) {
+                    code += "\"" + strNode->value + "\"";
+                } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expressions[i].get())) {
+                    code += std::to_string(intNode->value);
+                } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expressions[i].get())) {
+                    if(boolNode->value == true) {
+                        code += "true";
+                    } else {
+                        code += "false";
+                    }
+                } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expressions[i].get())) {
+                    code += varNode->name;
+                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expression.get())) {
+                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
+                        code += " + ";
+                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
+                        code += " - ";
+                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
+                        code += " * ";
+                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
+                        code += " / ";
+                    } else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                        code += " ( ";
+                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
+                        code += " ) ";
+                    }
+                }
+            }
+
+            /*
             if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
                 code += "\"" + strNode->value + "\"";
             } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
@@ -737,6 +902,7 @@ private:
             } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
                 code += varNode->name;
             }
+            */
 
             code += newLine();
             return code;
@@ -758,137 +924,12 @@ private:
             }
         }
     };
-
-    class GW_BASIC {
-    public:
-        GW_BASIC(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
-
-        std::string generateCode() {
-            std::string code = "";
-            for (const auto& statement : programNode->statements) {
-                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
-                    code += generatePrintCode(*printNode);
-                } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
-                    code += generateVarDeclarationCode(*varDeclNode);
-                } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
-                    code += generateCommentCode(*commentNode);
-                }
-            }
-            return code;
-        }
-
-    private:
-        std::shared_ptr<ProgramNode> programNode;
-
-        std::string generatePrintCode(const PrintNode& printNode) {
-            // Check if expression is a variable or literal
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-                return "PRINT \"" + strNode->value + "\"\n";
-            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-                return "PRINT " + varNode->name + "\n";
-            }
-
-            throw std::runtime_error("Error: Unsupported print expression");
-        }
-
-        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
-            std::string code = varDeclNode.varName + " = ";
-
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
-                code += "\"" + strNode->value + "\"";
-            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
-                code += std::to_string(intNode->value);
-            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
-                code += varNode->name;
-            }
-
-            code += "\n";
-            return code;
-        }
-
-        std::string generateCommentCode(const CommentNode& commentNode) {
-            if(commentNode.comment[0] != ' ') {
-                return "' " + commentNode.comment + "\n";
-            } else {
-                return "'" + commentNode.comment + "\n";
-            }
-        }
-    };
-
-    class QuickBASIC {
-    public:
-        QuickBASIC(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
-
-        std::string generateCode() {
-            std::string code = "";
-            for (const auto& statement : programNode->statements) {
-                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
-                    code += generatePrintCode(*printNode);
-                } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
-                    code += generateVarDeclarationCode(*varDeclNode);
-                } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
-                    code += generateCommentCode(*commentNode);
-                }
-            }
-            return code;
-        }
-
-    private:
-        std::shared_ptr<ProgramNode> programNode;
-
-        std::string generatePrintCode(const PrintNode& printNode) {
-            // Check if expression is a variable or literal
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-                return "PRINT \"" + strNode->value + "\"\n";
-            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-                return "PRINT " + varNode->name + "\n";
-            }
-
-            throw std::runtime_error("Error: Unsupported print expression");
-        }
-
-        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
-            std::string code = "";
-
-            if(varDeclNode.first) {
-                code = "DIM " + varDeclNode.varName + " AS ";
-
-                if(auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
-                    code += "STRING";
-                } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
-                    code += "INTEGER";
-                }
-
-                code += "\n";
-            }
-            
-            code += varDeclNode.varName + " = ";
-
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
-                code += "\"" + strNode->value + "\"";
-            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
-                code += std::to_string(intNode->value);
-            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
-                code += varNode->name;
-            }
-
-            code += "\n";
-            return code;
-        }
-
-        std::string generateCommentCode(const CommentNode& commentNode) {
-            if(commentNode.comment[0] != ' ') {
-                return "' " + commentNode.comment + "\n";
-            } else {
-                return "'" + commentNode.comment + "\n";
-            }
-        }
-    };
 };
 
 class Interpreter {
 public:
     std::unordered_map<std::string, std::string> variables;
+    std::unordered_map<std::string, std::string> constants;
 
     void interpret(const ProgramNode& programNode) {
         for (const auto& statement : programNode.statements) {
@@ -908,23 +949,48 @@ private:
     void interpretVarDeclaration(const VarDeclarationNode& varDeclNode) {
         // Hier interpretierst du den Ausdruck, um den Wert zu ermitteln
         std::string value;
-        if (auto strNode = dynamic_cast<StringLiteralNode*>(varDeclNode.expression.get())) {
-            value = strNode->value;
-        } else if (auto intNode = dynamic_cast<IntLiteralNode*>(varDeclNode.expression.get())) {
-            value = std::to_string(intNode->value);
-        }  else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(varDeclNode.expression.get())) {
-            if(boolNode->value == true) {
-                value = "True";
-            } else {
-                value = "False";
+
+        bool onlyNumber = true;
+
+        for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
+            if (auto strNode = dynamic_cast<StringLiteralNode*>(varDeclNode.expressions[i].get())) {
+                onlyNumber = false;
+                value += strNode->value;
+            } else if (auto intNode = dynamic_cast<IntLiteralNode*>(varDeclNode.expressions[i].get())) {
+                value += std::to_string(intNode->value);
+            }  else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(varDeclNode.expressions[i].get())) {
+                onlyNumber = false;
+                if(boolNode->value == true) {
+                    value += "True";
+                } else {
+                    value += "False";
+                }
+            } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(varDeclNode.expressions[i].get())) {
+                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
+                        value += "+";
+                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
+                        value += "-";
+                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
+                        value += "*";
+                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
+                        value += "/";
+                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                        value += "(";
+                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
+                        value += ")";
+                    }
+            } else if (auto varNode = dynamic_cast<VarNode*>(varDeclNode.expressions[i].get())) {
+                // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
+                if (variables.find(varNode->name) != variables.end()) {
+                    value += variables[varNode->name]; // Wert aus der Map abrufen
+                } else {
+                    throw std::runtime_error("Variable not found: " + varNode->name);
+                }
             }
-        } else if (auto varNode = dynamic_cast<VarNode*>(varDeclNode.expression.get())) {
-            // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
-            if (variables.find(varNode->name) != variables.end()) {
-                value = variables[varNode->name]; // Wert aus der Map abrufen
-            } else {
-                throw std::runtime_error("Variable not found: " + varNode->name);
-            }
+        }
+
+        if(onlyNumber) {
+            value = evaluate(value);
         }
 
         if(variables.find(varDeclNode.varName) != variables.end()) {
@@ -932,7 +998,7 @@ private:
                 throw std::runtime_error("Variable has already been defined: " + varDeclNode.varName);
             }
 
-            if(varDeclNode.constant) {
+            if(constants.find(varDeclNode.varName) != variables.end() ) {
                 throw std::runtime_error("Constants can't be changed: " + varDeclNode.varName);
             }
         } else {
@@ -943,6 +1009,10 @@ private:
 
         // Speichere den Wert in der Variablen Map
         variables[varDeclNode.varName] = value;
+
+        if(varDeclNode.constant) {
+            constants[varDeclNode.varName] = varDeclNode.varName;
+        }
     }
 
     void interpretPrintNode(const PrintNode& printNode) {
