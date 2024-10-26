@@ -9,7 +9,7 @@
 #include <set>
 #include <cstring>
 
-#include "c++\String.hpp"
+#include "c++\String.cpp"
 #include "c++\Arithmetic.cpp"
 
 #include "c\file_utils.h"
@@ -356,9 +356,11 @@ private:
 
             advance();
 
-            if(currentToken().type == TokenType::VAR) {
+            if(currentToken().type != TokenType::FUNC) {
                 isVar = true;
             }
+
+            tokens[current--];
 
             return parseIdentifier(isVar, true);
         }
@@ -688,9 +690,18 @@ private:
 
             for (size_t i = 0; i < printNode.arguments.size(); ++i) {
                 if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += strNode->value;
+                    code += "\"" + strNode->value + "\"";
                 } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
                     code += std::to_string(intNode->value);
+                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
+                    onlyNumber = false;
+                    if(boolNode->value == true) {
+                        code += "True";
+                    } else {
+                        code += "False";
+                    }
+                } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
+                    code += varNode->name;
                 } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
                         code += " + ";
@@ -705,8 +716,6 @@ private:
                     } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
                         code += " ) ";
                     }
-                } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
-                    code += varNode->name;
                 } else {
 
                 }
@@ -846,9 +855,16 @@ private:
 
             for (size_t i = 0; i < printNode.arguments.size(); ++i) {
                 if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += strNode->value;
+                    code += "\"" + strNode->value + "\"";
                 } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
                     code += std::to_string(intNode->value);
+                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
+                    onlyNumber = false;
+                    if(boolNode->value == true) {
+                        code += "True";
+                    } else {
+                        code += "False";
+                    }
                 } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
                         code += " + ";
@@ -995,7 +1011,7 @@ private:
 
             for (size_t i = 0; i < printNode.arguments.size(); ++i) {
                 if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += strNode->value;
+                    code += "\"" + strNode->value + "\"";
                 } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
                     code += std::to_string(intNode->value);
                 } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
@@ -1011,6 +1027,13 @@ private:
                         code += " ( ";
                     } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
                         code += " ) ";
+                    }
+                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
+                    onlyNumber = false;
+                    if(boolNode->value == true) {
+                        code += "true";
+                    } else {
+                        code += "false";
                     }
                 } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
                     code += varNode->name;
@@ -1217,7 +1240,7 @@ private:
                 output += strNode->value;
             } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.arguments[i].get())) {
                 output += std::to_string(intNode->value);
-            }  else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
+            } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
                 onlyNumber = false;
                 if(boolNode->value == true) {
                     output += "True";
@@ -1241,6 +1264,13 @@ private:
             } else if (auto varNode = dynamic_cast<VarNode*>(printNode.arguments[i].get())) {
                 // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
                 if (variables.find(varNode->name) != variables.end()) {
+
+                    onlyNumber = false;
+
+                    if(isNumber(variables[varNode->name])) {
+                        onlyNumber = true;
+                    }
+
                     output += variables[varNode->name]; // Wert aus der Map abrufen
                 } else {
                     throw std::runtime_error("Variable not found: " + varNode->name);
@@ -1251,29 +1281,6 @@ private:
         if(onlyNumber) {
             output = evaluate(output);
         }
-
-        /*
-        if (auto varNode = dynamic_cast<VarNode*>(printNode.arguments.at(0).get())) {
-            // Hier ist der Zugriff auf die Variable zu implementieren
-            if (variables.find(varNode->name) != variables.end()) {
-                output = variables[varNode->name]; // Variable aus dem Speicher abrufen
-            } else {
-                throw std::runtime_error("Variable not found: " + varNode->name);
-            }
-        } else if (auto strNode = dynamic_cast<StringLiteralNode*>(printNode.arguments.at(0).get())) {
-            output = strNode->value; // String-Wert
-        } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.arguments.at(0).get())) {
-            output = std::to_string(intNode->value); // String-Wert
-        } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments.at(0).get())) {
-            if (boolNode->value == true) {
-                output = "True";
-            } else {
-                output = "False";
-            }
-        } else {
-            throw std::runtime_error("Unrecognized expression in print statement");
-        }
-        */
 
         std::cout << output << std::endl; // Ausgabe des Strings
     }

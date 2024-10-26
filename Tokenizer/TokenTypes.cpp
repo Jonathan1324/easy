@@ -6,6 +6,8 @@ enum class TokenType {
     CONST,
     ASSIGNMENT,
     IDENTIFIER,
+
+    FUNC,
     
     // Literaltoken
     STRING_LITERAL,
