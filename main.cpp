@@ -1157,6 +1157,7 @@ private:
     void interpretVarDeclaration(const VarDeclarationNode& varDeclNode) {
         // Hier interpretierst du den Ausdruck, um den Wert zu ermitteln
         std::string value;
+        std::string stringValue;
 
         bool onlyNumber = true;
 
@@ -1164,14 +1165,18 @@ private:
             if (auto strNode = dynamic_cast<StringLiteralNode*>(varDeclNode.expressions[i].get())) {
                 onlyNumber = false;
                 value += strNode->value;
+                stringValue += strNode->value;
             } else if (auto intNode = dynamic_cast<IntLiteralNode*>(varDeclNode.expressions[i].get())) {
                 value += std::to_string(intNode->value);
+                stringValue += std::to_string(intNode->value);
             }  else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(varDeclNode.expressions[i].get())) {
                 onlyNumber = false;
                 if(boolNode->value == true) {
                     value += "True";
+                    stringValue += "True";
                 } else {
                     value += "False";
+                    stringValue += "False";
                 }
             } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(varDeclNode.expressions[i].get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
@@ -1190,7 +1195,8 @@ private:
             } else if (auto varNode = dynamic_cast<VarNode*>(varDeclNode.expressions[i].get())) {
                 // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
                 if (variables.find(varNode->name) != variables.end()) {
-                    value += variables[varNode->name]; // Wert aus der Map abrufen
+                    value += variables[varNode->name];
+                    stringValue += variables[varNode->name];
                 } else {
                     throw std::runtime_error("Variable not found: " + varNode->name);
                 }
@@ -1199,6 +1205,8 @@ private:
 
         if(onlyNumber) {
             value = evaluate(value);
+        } else {
+            value = stringValue;
         }
 
         if(variables.find(varDeclNode.varName) != variables.end()) {
@@ -1231,6 +1239,7 @@ private:
 
     void interpretPrintNode(const FunctionNode& printNode) {
         std::string output;
+        std::string StringOutput;
 
         bool onlyNumber = true;
 
@@ -1238,14 +1247,18 @@ private:
             if (auto strNode = dynamic_cast<StringLiteralNode*>(printNode.arguments[i].get())) {
                 onlyNumber = false;
                 output += strNode->value;
+                StringOutput += strNode->value;
             } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.arguments[i].get())) {
                 output += std::to_string(intNode->value);
+                StringOutput += std::to_string(intNode->value);;
             } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
                 onlyNumber = false;
                 if(boolNode->value == true) {
                     output += "True";
+                    StringOutput += "True";
                 } else {
                     output += "False";
+                    StringOutput += "False";
                 }
             } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments[i].get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
@@ -1272,6 +1285,7 @@ private:
                     }
 
                     output += variables[varNode->name]; // Wert aus der Map abrufen
+                    StringOutput += variables[varNode->name];
                 } else {
                     throw std::runtime_error("Variable not found: " + varNode->name);
                 }
@@ -1280,6 +1294,8 @@ private:
 
         if(onlyNumber) {
             output = evaluate(output);
+        } else {
+            output = StringOutput;
         }
 
         std::cout << output << std::endl; // Ausgabe des Strings
