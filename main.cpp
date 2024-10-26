@@ -191,6 +191,15 @@ public:
     }
 };
 
+class CommaNode : public ASTNode {
+public:
+    CommaNode() {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "CommaNode: ,\n";
+    }
+};
+
 class PrintNode : public ASTNode {
 public:
     std::unique_ptr<ASTNode> expression; // Der Ausdruck, der ausgegeben werden soll
@@ -200,6 +209,22 @@ public:
     void print(int indent = 0) const override {
         std::cout << std::string(indent, ' ') << "PrintNode:\n";
         expression->print(indent + 2); // Ausgabe des Ausdrucks
+    }
+};
+
+class FunctionNode : public ASTNode {
+public:
+    std::string funcName;
+    std::vector<std::unique_ptr<ASTNode>> arguments; // Der Ausdruck, der ausgegeben werden soll
+
+    FunctionNode(std::string name, std::vector<std::unique_ptr<ASTNode>> args) : arguments(std::move(args)), funcName(name) {}
+
+    void print(int indent = 0) const override {
+        std::cout << std::string(indent, ' ') << "FunctionNode: " << funcName << "\n";
+
+        for (const std::unique_ptr<ASTNode>& argument : arguments) {
+            argument->print(indent + 2);
+        }
     }
 };
 
@@ -371,17 +396,29 @@ private:
 
         bool isFinished = false;
 
-        while(!isFinished && currentToken().type != TokenType::CLOSE_PARENTHESIS) {
-            expressions.push_back(parseExpression());
-            
-            if(currentToken().type == TokenType::CLOSE_PARENTHESIS) {
+        int brackets = 0;
+
+        while(!isFinished && brackets >= 0) {
+            if(currentToken().type == TokenType::OPEN_PARENTHESIS) {
+                brackets += 1;
+            } else if(currentToken().type == TokenType::CLOSE_PARENTHESIS) {
+                brackets -= 1;
+            }
+
+            if(currentToken().type == TokenType::COMMA) {
+                expressions.push_back(std::make_unique<CommaNode>());
+                advance();
+            } else {
+                expressions.push_back(parseExpression());
+            }
+
+            if(brackets < 0) {
+                expressions.pop_back();
                 isFinished = true;
             }
         }
 
-        advance();
-
-        return std::make_unique<PrintNode>(std::move(expressions[0]));
+        return std::make_unique<FunctionNode>(name, std::move(expressions));
     }
 
     std::unique_ptr<ASTNode> parseVarDeclaration(bool var, bool isConst) {
@@ -614,8 +651,8 @@ private:
         std::string generateCode() {
             std::string code = "";
             for (const auto& statement : programNode->statements) {
-                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
-                    code += generatePrintCode(*printNode);
+                if (auto functionNode = dynamic_cast<FunctionNode*>(statement.get())) {
+                    code += generateFunctionCode(*functionNode);
                 } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
                     code += generateVarDeclarationCode(*varDeclNode);
                 } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
@@ -632,15 +669,52 @@ private:
             return "\n";
         }
 
-        std::string generatePrintCode(const PrintNode& printNode) {
-            // Check if expression is a variable or literal
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-                return "print ( \"" + strNode->value + "\" )" + newLine();
-            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-                return "print ( " + varNode->name + " )" + newLine();
+        std::string generateFunctionCode(const FunctionNode& functionNode) {
+            if (functionNode.funcName == "print") {
+                return generatePrintCode(functionNode);
             }
 
-            throw std::runtime_error("Error: Unsupported print expression");
+            throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
+        }
+
+        std::string generatePrintCode(const FunctionNode& printNode) {
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
+            }
+
+            std::string code = "print ( ";
+
+            bool onlyNumber = true;
+
+            for (size_t i = 0; i < printNode.arguments.size(); ++i) {
+                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
+                    code += strNode->value;
+                } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
+                    code += std::to_string(intNode->value);
+                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
+                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
+                        code += " + ";
+                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
+                        code += " - ";
+                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
+                        code += " * ";
+                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
+                        code += " / ";
+                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                        code += " ( ";
+                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
+                        code += " ) ";
+                    }
+                } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
+                    code += varNode->name;
+                } else {
+
+                }
+            }
+
+            code += " )" + newLine();
+
+            return code;
         }
 
         std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
@@ -735,8 +809,8 @@ private:
         std::string generateCode() {
             std::string code = "";
             for (const auto& statement : programNode->statements) {
-                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
-                    code += generatePrintCode(*printNode);
+                if (auto functionNode = dynamic_cast<FunctionNode*>(statement.get())) {
+                    code += generateFunctionCode(*functionNode);
                 } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
                     code += generateVarDeclarationCode(*varDeclNode);
                 } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
@@ -753,15 +827,52 @@ private:
             return "\n";
         }
 
-        std::string generatePrintCode(const PrintNode& printNode) {
-            // Check if expression is a variable or literal
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-                return "print ( \"" + strNode->value + "\" )" + newLine();
-            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-                return "print ( " + varNode->name + " )" + newLine();
+        std::string generateFunctionCode(const FunctionNode& functionNode) {
+            if (functionNode.funcName == "print") {
+                return generatePrintCode(functionNode);
             }
 
-            throw std::runtime_error("Error: Unsupported print expression");
+            throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
+        }
+
+        std::string generatePrintCode(const FunctionNode& printNode) {
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
+            }
+
+            std::string code = "print ( ";
+
+            bool onlyNumber = true;
+
+            for (size_t i = 0; i < printNode.arguments.size(); ++i) {
+                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
+                    code += strNode->value;
+                } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
+                    code += std::to_string(intNode->value);
+                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
+                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
+                        code += " + ";
+                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
+                        code += " - ";
+                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
+                        code += " * ";
+                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
+                        code += " / ";
+                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                        code += " ( ";
+                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
+                        code += " ) ";
+                    }
+                } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
+                    code += varNode->name;
+                } else {
+
+                }
+            }
+
+            code += " )" + newLine();
+
+            return code;
         }
 
         std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
@@ -847,8 +958,8 @@ private:
         std::string generateCode() {
             std::string code = "";
             for (const auto& statement : programNode->statements) {
-                if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
-                    code += generatePrintCode(*printNode);
+                if (auto functionNode = dynamic_cast<FunctionNode*>(statement.get())) {
+                    code += generateFunctionCode(*functionNode);
                 } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
                     code += generateVarDeclarationCode(*varDeclNode);
                 } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
@@ -865,15 +976,52 @@ private:
             return ";\n";
         }
 
-        std::string generatePrintCode(const PrintNode& printNode) {
-            // Check if expression is a variable or literal
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-                return "console.log ( \"" + strNode->value + "\" )" + newLine();
-            } else if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-                return "console.log ( " + varNode->name + " )" + newLine();
+        std::string generateFunctionCode(const FunctionNode& functionNode) {
+            if (functionNode.funcName == "print") {
+                return generatePrintCode(functionNode);
             }
 
-            throw std::runtime_error("Error: Unsupported print expression");
+            throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
+        }
+
+        std::string generatePrintCode(const FunctionNode& printNode) {
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
+            }
+
+            std::string code = "console.log ( ";
+
+            bool onlyNumber = true;
+
+            for (size_t i = 0; i < printNode.arguments.size(); ++i) {
+                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
+                    code += strNode->value;
+                } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
+                    code += std::to_string(intNode->value);
+                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
+                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
+                        code += " + ";
+                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
+                        code += " - ";
+                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
+                        code += " * ";
+                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
+                        code += " / ";
+                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                        code += " ( ";
+                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
+                        code += " ) ";
+                    }
+                } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
+                    code += varNode->name;
+                } else {
+
+                }
+            }
+
+            code += " )" + newLine();
+
+            return code;
         }
 
         std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
@@ -976,8 +1124,8 @@ public:
 
 private:
     void interpretStatement(const std::unique_ptr<ASTNode>& statement) {
-        if (auto printNode = dynamic_cast<PrintNode*>(statement.get())) {
-            interpretPrintNode(*printNode);
+        if (auto functionNode = dynamic_cast<FunctionNode*>(statement.get())) {
+            interpretFunctionNode(*functionNode);
         } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
             interpretVarDeclaration(*varDeclNode);
         }
@@ -1052,21 +1200,71 @@ private:
         }
     }
 
-    void interpretPrintNode(const PrintNode& printNode) {
+    void interpretFunctionNode(const FunctionNode& functionNode) {
+        if(functionNode.funcName == "print") {
+            interpretPrintNode(functionNode);
+        }
+    }
+
+    void interpretPrintNode(const FunctionNode& printNode) {
         std::string output;
 
-        if (auto varNode = dynamic_cast<VarNode*>(printNode.expression.get())) {
+        bool onlyNumber = true;
+
+        for (size_t i = 0; i < printNode.arguments.size(); ++i) {
+            if (auto strNode = dynamic_cast<StringLiteralNode*>(printNode.arguments[i].get())) {
+                onlyNumber = false;
+                output += strNode->value;
+            } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.arguments[i].get())) {
+                output += std::to_string(intNode->value);
+            }  else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
+                onlyNumber = false;
+                if(boolNode->value == true) {
+                    output += "True";
+                } else {
+                    output += "False";
+                }
+            } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments[i].get())) {
+                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
+                        output += "+";
+                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
+                        output += "-";
+                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
+                        output += "*";
+                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
+                        output += "/";
+                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                        output += "(";
+                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
+                        output += ")";
+                    }
+            } else if (auto varNode = dynamic_cast<VarNode*>(printNode.arguments[i].get())) {
+                // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
+                if (variables.find(varNode->name) != variables.end()) {
+                    output += variables[varNode->name]; // Wert aus der Map abrufen
+                } else {
+                    throw std::runtime_error("Variable not found: " + varNode->name);
+                }
+            }
+        }
+
+        if(onlyNumber) {
+            output = evaluate(output);
+        }
+
+        /*
+        if (auto varNode = dynamic_cast<VarNode*>(printNode.arguments.at(0).get())) {
             // Hier ist der Zugriff auf die Variable zu implementieren
             if (variables.find(varNode->name) != variables.end()) {
                 output = variables[varNode->name]; // Variable aus dem Speicher abrufen
             } else {
                 throw std::runtime_error("Variable not found: " + varNode->name);
             }
-        } else if (auto strNode = dynamic_cast<StringLiteralNode*>(printNode.expression.get())) {
+        } else if (auto strNode = dynamic_cast<StringLiteralNode*>(printNode.arguments.at(0).get())) {
             output = strNode->value; // String-Wert
-        } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.expression.get())) {
+        } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.arguments.at(0).get())) {
             output = std::to_string(intNode->value); // String-Wert
-        } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.expression.get())) {
+        } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments.at(0).get())) {
             if (boolNode->value == true) {
                 output = "True";
             } else {
@@ -1075,6 +1273,7 @@ private:
         } else {
             throw std::runtime_error("Unrecognized expression in print statement");
         }
+        */
 
         std::cout << output << std::endl; // Ausgabe des Strings
     }

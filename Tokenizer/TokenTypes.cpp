@@ -5,7 +5,6 @@ enum class TokenType {
     VAR,
     CONST,
     ASSIGNMENT,
-
     IDENTIFIER,
     
     // Literaltoken
@@ -22,6 +21,8 @@ enum class TokenType {
     // Symboltoken
     OPEN_PARENTHESIS,
     CLOSE_PARENTHESIS,
+
+    COMMA,
 
     // Zeilen Ende
     SEMICOLON,

@@ -1,2 +1,2 @@
-let test = 1 + 1 * 2;
-console.log ( test );
+let test =  ( 1 + 1 )  * 2;
+console.log ( test * 2 );

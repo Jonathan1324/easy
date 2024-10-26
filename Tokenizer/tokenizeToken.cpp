@@ -43,6 +43,10 @@ Token tokenizeSymbol(const std::string& code, size_t& i) {
         ++i; // Index erhöhen
         return {TokenType::CLOSE_PARENTHESIS, ")"};
     }
+    if (code[i] == ',') {
+        ++i; // Index erhöhen
+        return {TokenType::COMMA, ","};
+    }
     return {TokenType::UNKNOWN, ""}; // Rückgabe UNKNOWN, wenn kein Token erkannt wurde
 }
 
