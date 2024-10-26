@@ -3,15 +3,6 @@
 
 #include "TokenTypes.cpp"
 
-// Funktion zur Erkennung von Funktionstoken
-Token tokenizeFunction(const std::string& code, size_t& i) {
-    if (code.substr(i, 5) == "print") {
-        i += 5; // Index um 5 erhöhen
-        return {TokenType::PRINT, "print"};
-    }
-    return {TokenType::UNKNOWN, ""}; // Rückgabe UNKNOWN, wenn kein Token erkannt wurde
-}
-
 // Funktion zur Erkennung von Literal-Token
 Token tokenizeLiteral(const std::string& code, size_t& i) {
     if (std::isdigit(code[i])) {

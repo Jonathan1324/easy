@@ -62,12 +62,6 @@ std::vector<Token> tokenize(const std::string& code) {
             continue;
         }
 
-        Token functionToken = tokenizeFunction(code, i);
-        if (functionToken.type != TokenType::UNKNOWN) {
-            tokens.push_back(functionToken);
-            continue;
-        }
-
         Token literalToken = tokenizeLiteral(code, i);
         if (literalToken.type != TokenType::UNKNOWN) {
             tokens.push_back(literalToken);
@@ -322,32 +316,75 @@ private:
             return nullptr;
         }
 
+        /*
         if (currentToken().type == TokenType::PRINT) {
             return parsePrintStatement();
         }
+        */
 
-        if (currentToken().type == TokenType::VAR || currentToken().type == TokenType::CONST) {
-            return parseVarDeclaration(true);
+        if (currentToken().type == TokenType::VAR) {
+            return parseIdentifier(true, false);
+        }
+
+        if(currentToken().type == TokenType::CONST) {
+            bool isVar = false;
+
+            advance();
+
+            if(currentToken().type == TokenType::VAR) {
+                isVar = true;
+            }
+
+            return parseIdentifier(isVar, true);
         }
 
         if (currentToken().type == TokenType::IDENTIFIER) {
-            return parseVarDeclaration(false);
+            return parseIdentifier(false, false);
         }
 
         throw std::runtime_error("Unrecognized statement");
     }
 
-    std::unique_ptr<ASTNode> parseVarDeclaration(bool var) {
-        bool isConst = false;
-
-        if(currentToken().type == TokenType::CONST) {
-            isConst = true;
-        }
-
+    std::unique_ptr<ASTNode> parseIdentifier(bool var, bool isConst) {
         if(var) {
             advance();
         }
 
+        advance();
+
+        if(currentToken().type == TokenType::ASSIGNMENT || var) {
+            tokens[current--];
+            return parseVarDeclaration(var, isConst);
+        } else {
+            tokens[current--];
+            return parseFunction(var, isConst);
+        }
+    }
+
+    std::unique_ptr<ASTNode> parseFunction(bool var, bool isConst) {
+        std::vector<std::unique_ptr<ASTNode>> expressions = std::vector<std::unique_ptr<ASTNode>>();
+
+        std::string name = currentToken().value;
+
+        advance();
+        advance();
+
+        bool isFinished = false;
+
+        while(!isFinished && currentToken().type != TokenType::CLOSE_PARENTHESIS) {
+            expressions.push_back(parseExpression());
+            
+            if(currentToken().type == TokenType::CLOSE_PARENTHESIS) {
+                isFinished = true;
+            }
+        }
+
+        advance();
+
+        return std::make_unique<PrintNode>(std::move(expressions[0]));
+    }
+
+    std::unique_ptr<ASTNode> parseVarDeclaration(bool var, bool isConst) {
         if (currentToken().type != TokenType::IDENTIFIER) {
             throw std::runtime_error("Expected variable name after 'var'");
         }
@@ -1157,9 +1194,6 @@ int main(int argc, char* argv[]) {
         std::cout << "Tokens\n";
         for (const auto& token : tokens) {
             switch (token.type) {
-                case TokenType::PRINT:
-                    std::cout << "Token: PRINT, Value: " << token.value << "\n";
-                    break;
                 case TokenType::STRING_LITERAL:
                     std::cout << "Token: STRING_LITERAL, Value: \"" << token.value << "\"\n";
                     break;

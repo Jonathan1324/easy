@@ -1,12 +1,12 @@
-enum class TokenType {
-    // Funktionstoken
-    PRINT,
+#include <string>
 
+enum class TokenType {
     // Variablen
     VAR,
     CONST,
-    IDENTIFIER,
     ASSIGNMENT,
+
+    IDENTIFIER,
     
     // Literaltoken
     STRING_LITERAL,
