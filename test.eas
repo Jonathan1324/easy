@@ -56,3 +56,9 @@ print(val1 + " + " + val2 + " = " + str(result))
 test = "1 = " + 1
 
 print(test + " -- " + True)
+
+var str10 = "1 + 1 = "
+
+var OnePlusOne = 1 + 1
+
+print(str10 + str(OnePlusOne))

@@ -1,3 +1,2 @@
-str1 = "1 + 1 = "
-OnePlusOne = 1 + 1
-print ( str1 + str ( OnePlusOne ) )
+inputTest = input ( "What is the height of Jonathan? " )
+print ( "Jonathan's height is " + str ( inputTest ) )

@@ -709,8 +709,6 @@ private:
 
             code += " )";
 
-            std::cout << "\n\n" << code << "\n\n";
-
             return code;
         }
 
@@ -724,8 +722,6 @@ private:
             code += generateExpression(printNode.arguments);
 
             code += " )";
-
-            std::cout << "\n\n" << code << "\n\n";
 
             return code;
         }
@@ -934,8 +930,6 @@ private:
 
             code += ".toString()";
 
-            std::cout << "\n\n" << code << "\n\n";
-
             return code;
         }
 
@@ -949,8 +943,6 @@ private:
             code += generateExpression(printNode.arguments);
 
             code += ", 10 )";
-
-            std::cout << "\n\n" << code << "\n\n";
 
             return code;
         }
