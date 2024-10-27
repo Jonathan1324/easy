@@ -1179,6 +1179,7 @@ private:
         std::string StringOutput;
 
         bool onlyNumber = true;
+        bool hasInt = false;
 
         for (size_t i = 0; i < expressions.size(); ++i) {
             if (auto strNode = dynamic_cast<StringLiteralNode*>(expressions[i].get())) {
@@ -1186,6 +1187,7 @@ private:
                 output += strNode->value;
                 StringOutput += strNode->value;
             } else if (auto intNode = dynamic_cast<IntLiteralNode*>(expressions[i].get())) {
+                hasInt = true;
                 output += std::to_string(intNode->value);
                 StringOutput += std::to_string(intNode->value);;
             } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
@@ -1215,7 +1217,11 @@ private:
                 // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
                 if (variables.find(varNode->name) != variables.end()) {
 
-                    onlyNumber = false;
+                    if(isNumber(variables[varNode->name])) {
+                        hasInt = true;
+                    } else {
+                        onlyNumber = false;
+                    }
 
                     output += variables[varNode->name]; // Wert aus der Map abrufen
                     StringOutput += variables[varNode->name];
@@ -1227,6 +1233,7 @@ private:
                 auto retVal = interpretFunctionNode(*functionNode);
 
                 if(std::holds_alternative<int>(retVal)) {
+                    hasInt = true;
                     output += std::to_string(std::get<int>(retVal));
                 } else if(std::holds_alternative<std::string>(retVal)) {
                     onlyNumber = false;
@@ -1252,7 +1259,12 @@ private:
         if(onlyNumber) {
             output = evaluate(output);
         } else {
-            output = StringOutput;
+            if(hasInt) {
+                std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn INTs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
+                output = StringOutput;
+            } else {
+                output = StringOutput;
+            }
         }
 
         return output;
