@@ -1,13 +1,5 @@
-/*
-var val1 = input("What is your first number? ")
+var str1 = "1 + 1 = "
 
-var val2 = input("What is your second number? ")
+var OnePlusOne = 1 + 1
 
-var result = int(val1) + int(val2)
-
-print(val1 + " + " + val2 + " = " + result)
-*/
-
-var test = "1 = " + 1
-
-print(test + " -- " + True)
+print(str1 + str(OnePlusOne))

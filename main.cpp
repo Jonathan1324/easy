@@ -690,9 +690,28 @@ private:
                 case str2int("int"): {
                     return generateIntCode(functionNode);
                 }
+                case str2int("str"): {
+                    return generateStrCode(functionNode);
+                }
                 default:
                     throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
             }
+        }
+
+        std::string generateStrCode(const FunctionNode& printNode) {
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
+            }
+
+            std::string code = "str ( ";
+
+            code += generateExpression(printNode.arguments);
+
+            code += " )";
+
+            std::cout << "\n\n" << code << "\n\n";
+
+            return code;
         }
 
         std::string generateIntCode(const FunctionNode& printNode) {
@@ -760,10 +779,6 @@ private:
                     onlyNumber = false;
                 } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
                     onlyNumber = false;
-                } else if (const auto* varNode = dynamic_cast<const VarNode*>(expressions.at(i).get())) {
-                    if(!isNumber(varNode->name)) {
-                        onlyNumber = false;
-                    }
                 }
             }
 
@@ -799,7 +814,11 @@ private:
                         code += "str ( False ) ";
                     }
                 } else if (const auto* varNode = dynamic_cast<const VarNode*>(expressions.at(i).get())) {
-                    code += "str ( " + varNode->name + " ) ";
+                    if(onlyNumber) {
+                        code += varNode->name;
+                    } else {
+                        code += "str ( " + varNode->name + " ) ";
+                    }
                 } else if (const auto* functionNode = dynamic_cast<const FunctionNode*>(expressions.at(i).get())) {
                     code += generateFunctionCode(*functionNode);
                 } else {
@@ -898,9 +917,26 @@ private:
                 case str2int("int"): {
                     return generateIntCode(functionNode);
                 }
+                case str2int("str"): {
+                    return generateStrCode(functionNode);
+                }
                 default:
                     throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
             }
+        }
+
+        std::string generateStrCode(const FunctionNode& printNode) {
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
+            }
+
+            std::string code = generateExpression(printNode.arguments);
+
+            code += ".toString()";
+
+            std::cout << "\n\n" << code << "\n\n";
+
+            return code;
         }
 
         std::string generateIntCode(const FunctionNode& printNode) {
@@ -1089,9 +1125,18 @@ private:
             case str2int("int"): {
                 return interpretIntFunction(functionNode);
             }
+            case str2int("str"): {
+                return interpretStrFunction(functionNode);
+            }
             default:
                 return std::monostate{};
         }
+    }
+
+    std::string interpretStrFunction(const FunctionNode& functionNode) {
+        std::string args = interpretExpressions(functionNode.arguments);
+
+        return args;
     }
 
     int interpretIntFunction(const FunctionNode& functionNode) {
