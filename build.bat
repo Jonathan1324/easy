@@ -18,18 +18,18 @@ if not exist %OBJ_DIR% mkdir %OBJ_DIR%
 
 :: ASSEMBLY
 for %%f in (%ASM_DIR%\*.asm) do (
-    %NASM% -f win32 %%f -o %OBJ_DIR%\%%~nf.obj
+    %NASM% -f win64 %%f -o %OBJ_DIR%\%%~nf.obj
 )
 
 :: CPP
 :: for %%f in (%CPP_DIR%\*.cpp) do (
-::    %GCC% -m32 -c -o %OBJ_DIR%\%%~nf.obj %%f
+::    %GCC% -c -o %OBJ_DIR%\%%~nf.obj %%f
 ::)
 
 :: C
 for %%f in (%C_DIR%\*.c) do (
-    %GCC% -m32 -c -o %OBJ_DIR%\%%~nf.o %%f
+    %GCC% -c -o %OBJ_DIR%\%%~nf.o %%f
 )
 
 :: MAIN
-%GCC% -m32 -o main.exe %OBJ_DIR%\*.obj %OBJ_DIR%\*.o -static
+%GCC% -o main.exe %OBJ_DIR%\*.obj %OBJ_DIR%\*.o -static

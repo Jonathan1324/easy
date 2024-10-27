@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <set>
 #include <cstring>
+#include <variant>
 
 #include "c++\String.cpp"
 #include "c++\Arithmetic.cpp"
@@ -17,7 +18,6 @@
 #include "Tokenizer\tokenizeToken.cpp"
 
 enum class CompilerLanguages {
-    Easy,
     Python,
     JavaScript,
     GW_BASIC,
@@ -274,7 +274,7 @@ public:
     std::string comment;
     bool multiline;
 
-    CommentNode(const std::string& val, const bool& multi) : comment(val, multi) {}
+    CommentNode(const std::string& val, const bool& multi) : comment(val), multiline(multi) {}
 
     void print(int indent = 0) const override {
         if(multiline) {
@@ -360,7 +360,7 @@ private:
                 isVar = true;
             }
 
-            tokens[current--];
+            current--;
 
             return parseIdentifier(isVar, true);
         }
@@ -380,10 +380,10 @@ private:
         advance();
 
         if(currentToken().type == TokenType::ASSIGNMENT || var) {
-            tokens[current--];
+            current--;
             return parseVarDeclaration(var, isConst);
         } else {
-            tokens[current--];
+            current--;
             return parseFunction(var, isConst);
         }
     }
@@ -523,8 +523,14 @@ private:
             return std::make_unique<ArithmeticOperationNode>(type);
         } else if (currentToken().type == TokenType::IDENTIFIER) {
             std::string varName = currentToken().value;
-            advance(); // Identifier Token überspringen
-            return std::make_unique<VarNode>(varName); // Erstelle einen VarNode, um auf die Variable zuzugreifen
+            advance();
+
+            if(currentToken().type == TokenType::OPEN_PARENTHESIS) {
+                current--;
+                return parseFunction(false, false);
+            } else {
+                return std::make_unique<VarNode>(varName);
+            }
         }
         throw std::runtime_error("Expected expression");
     }
@@ -596,6 +602,10 @@ private:
             // Hier kannst du überprüfen, ob es eine gültige Variable ist
             // Zum Beispiel, ob die Variable deklariert wurde
             
+        } else if (const auto* functionNode = dynamic_cast<const FunctionNode*>(&expression)) {
+            // Hier kannst du überprüfen, ob es eine gültige Variable ist
+            // Zum Beispiel, ob die Variable deklariert wurde
+            
         } else {
             throw std::runtime_error("Error: Unsupported expression type.");
         }
@@ -624,8 +634,6 @@ public:
     std::string generateCode(const CompilerLanguages language) {
         switch (language)
         {
-        case CompilerLanguages::Easy:
-            return Easy(programNode).generateCode();
         case CompilerLanguages::Python:
             return Python(programNode).generateCode();
         case CompilerLanguages::JavaScript:
@@ -646,171 +654,6 @@ public:
 private:
     std::shared_ptr<ProgramNode> programNode;
 
-    class Easy {
-    public:
-        Easy(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
-
-        std::string generateCode() {
-            std::string code = "";
-            for (const auto& statement : programNode->statements) {
-                if (auto functionNode = dynamic_cast<FunctionNode*>(statement.get())) {
-                    code += generateFunctionCode(*functionNode);
-                } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
-                    code += generateVarDeclarationCode(*varDeclNode);
-                } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
-                    code += generateCommentCode(*commentNode);
-                }
-            }
-            return code;
-        }
-
-    private:
-        std::shared_ptr<ProgramNode> programNode;
-
-        std::string newLine() {
-            return "\n";
-        }
-
-        std::string generateFunctionCode(const FunctionNode& functionNode) {
-            if (functionNode.funcName == "print") {
-                return generatePrintCode(functionNode);
-            }
-
-            throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
-        }
-
-        std::string generatePrintCode(const FunctionNode& printNode) {
-            if (printNode.arguments.empty()) {
-                throw std::runtime_error("Error: print function requires at least one argument");
-            }
-
-            std::string code = "print ( ";
-
-            bool onlyNumber = true;
-
-            for (size_t i = 0; i < printNode.arguments.size(); ++i) {
-                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += "\"" + strNode->value + "\"";
-                } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += std::to_string(intNode->value);
-                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
-                    onlyNumber = false;
-                    if(boolNode->value == true) {
-                        code += "True";
-                    } else {
-                        code += "False";
-                    }
-                } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
-                    code += varNode->name;
-                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
-                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
-                        code += " + ";
-                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
-                        code += " - ";
-                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
-                        code += " * ";
-                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
-                        code += " / ";
-                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
-                        code += " ( ";
-                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
-                        code += " ) ";
-                    }
-                } else {
-
-                }
-            }
-
-            code += " )" + newLine();
-
-            return code;
-        }
-
-        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
-            std::string code;
-            if(varDeclNode.constant) {
-                if(varDeclNode.first) {
-                    code = "const " + varDeclNode.varName + " = ";
-                } else {
-                    throw std::runtime_error("Constants can't be changed: " + varDeclNode.varName);
-                }
-            } else {
-                if(varDeclNode.first) {
-                    code = "var " + varDeclNode.varName + " = ";
-                } else {
-                    code = varDeclNode.varName + " = ";
-                }
-            }
-
-            for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
-                const std::unique_ptr<ASTNode>& expression = varDeclNode.expressions[i];
-
-                if (auto strNode = dynamic_cast<const StringLiteralNode*>(expression.get())) {
-                    code += "\"" + strNode->value + "\"";
-                } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(expression.get())) {
-                    code += std::to_string(intNode->value);
-                } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(expression.get())) {
-                    if(boolNode->value == true) {
-                        code += "True";
-                    } else {
-                        code += "False";
-                    }
-                } else if (auto varNode = dynamic_cast<const VarNode*>(expression.get())) {
-                    code += varNode->name;
-                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expression.get())) {
-                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
-                        code += " + ";
-                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
-                        code += " - ";
-                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
-                        code += " * ";
-                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
-                        code += " / ";
-                    } else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
-                        code += " ( ";
-                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
-                        code += " ) ";
-                    }
-                }
-            }
-
-            /*
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
-                code += "\"" + strNode->value + "\"";
-            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
-                code += std::to_string(intNode->value);
-            } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expression.get())) {
-                if(boolNode->value == true) {
-                    code += "True";
-                } else {
-                    code += "False";
-                }
-            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
-                code += varNode->name;
-            }
-            */
-
-            code += newLine();
-            return code;
-        }
-
-        std::string generateCommentCode(const CommentNode& commentNode) {
-            if(commentNode.multiline) {
-                if(commentNode.comment[0] != ' ') {
-                    return "/* " + commentNode.comment + newLine() + "*/" + newLine();
-                } else {
-                    return "/*" + commentNode.comment + newLine() + "*/" + newLine();
-                }
-            } else {
-                if(commentNode.comment[0] != ' ') {
-                    return "// " + commentNode.comment + newLine();
-                } else {
-                    return "//" + commentNode.comment + newLine();
-                }
-            }
-        }
-    };
-
     class Python {
     public:
         Python(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
@@ -819,7 +662,7 @@ private:
             std::string code = "";
             for (const auto& statement : programNode->statements) {
                 if (auto functionNode = dynamic_cast<FunctionNode*>(statement.get())) {
-                    code += generateFunctionCode(*functionNode);
+                    code += generateFunctionCode(*functionNode) + newLine();
                 } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
                     code += generateVarDeclarationCode(*varDeclNode);
                 } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
@@ -835,13 +678,51 @@ private:
         std::string newLine() {
             return "\n";
         }
-
+        
         std::string generateFunctionCode(const FunctionNode& functionNode) {
-            if (functionNode.funcName == "print") {
-                return generatePrintCode(functionNode);
+            switch(str2int(functionNode.funcName.c_str())) {
+                case str2int("print"): {
+                    return generatePrintCode(functionNode);
+                }
+                case str2int("input"): {
+                    return generateInputCode(functionNode);
+                }
+                case str2int("int"): {
+                    return generateIntCode(functionNode);
+                }
+                default:
+                    throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
+            }
+        }
+
+        std::string generateIntCode(const FunctionNode& printNode) {
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
             }
 
-            throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
+            std::string code = "int ( ";
+
+            code += generateExpression(printNode.arguments);
+
+            code += " )";
+
+            std::cout << "\n\n" << code << "\n\n";
+
+            return code;
+        }
+
+        std::string generateInputCode(const FunctionNode& printNode) {
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
+            }
+
+            std::string code = "input ( ";
+
+            code += generateExpression(printNode.arguments);
+
+            code += " )";
+
+            return code;
         }
 
         std::string generatePrintCode(const FunctionNode& printNode) {
@@ -851,21 +732,53 @@ private:
 
             std::string code = "print ( ";
 
+            code += generateExpression(printNode.arguments);
+
+            code += " )";
+
+            return code;
+        }
+
+        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
+            std::string code = varDeclNode.varName + " = ";
+            
+            code += generateExpression(varDeclNode.expressions);
+
+            if(varDeclNode.constant) {
+                code += "        # Constant";
+            }
+
+            code += newLine();
+            return code;
+        }
+
+        std::string generateExpression(const std::vector<std::unique_ptr<ASTNode>>& expressions) {
             bool onlyNumber = true;
 
-            for (size_t i = 0; i < printNode.arguments.size(); ++i) {
-                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += "\"" + strNode->value + "\"";
-                } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += std::to_string(intNode->value);
-                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
+            for (size_t i = 0; i < expressions.size(); ++i) {
+                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(expressions.at(i).get())) {
                     onlyNumber = false;
-                    if(boolNode->value == true) {
-                        code += "True";
-                    } else {
-                        code += "False";
+                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
+                    onlyNumber = false;
+                } else if (const auto* varNode = dynamic_cast<const VarNode*>(expressions.at(i).get())) {
+                    if(!isNumber(varNode->name)) {
+                        onlyNumber = false;
                     }
-                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
+                }
+            }
+
+            std::string code = "";
+
+            for (size_t i = 0; i < expressions.size(); ++i) {
+                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(expressions.at(i).get())) {
+                    code += "\"" + strNode->value + "\"";
+                } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(expressions.at(i).get())) {
+                    if(onlyNumber) {
+                        code += std::to_string(intNode->value);
+                    } else {
+                        code += "str ( " + std::to_string(intNode->value) + " ) ";
+                    }
+                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expressions.at(i).get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
                         code += " + ";
                     } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
@@ -879,74 +792,21 @@ private:
                     } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
                         code += " ) ";
                     }
-                } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
-                    code += varNode->name;
-                } else {
-
-                }
-            }
-
-            code += " )" + newLine();
-
-            return code;
-        }
-
-        std::string generateVarDeclarationCode(const VarDeclarationNode& varDeclNode) {
-            std::string code = varDeclNode.varName + " = ";
-
-            /*
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
-                code += "\"" + strNode->value + "\"";
-            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
-                code += std::to_string(intNode->value);
-            } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expression.get())) {
-                if(boolNode->value == true) {
-                    code += "True";
-                } else {
-                    code += "False";
-                }
-            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
-                code += varNode->name;
-            }
-            */
-            
-            for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
-                const std::unique_ptr<ASTNode>& expression = varDeclNode.expressions[i];
-
-                if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expressions[i].get())) {
-                    code += "\"" + strNode->value + "\"";
-                } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expressions[i].get())) {
-                    code += std::to_string(intNode->value);
-                } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expressions[i].get())) {
+                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
                     if(boolNode->value == true) {
-                        code += "True";
+                        code += "str ( True ) ";
                     } else {
-                        code += "False";
+                        code += "str ( False ) ";
                     }
-                } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expressions[i].get())) {
-                    code += varNode->name;
-                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expression.get())) {
-                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
-                        code += " + ";
-                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
-                        code += " - ";
-                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
-                        code += " * ";
-                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
-                        code += " / ";
-                    } else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
-                        code += " ( ";
-                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
-                        code += " ) ";
-                    }
+                } else if (const auto* varNode = dynamic_cast<const VarNode*>(expressions.at(i).get())) {
+                    code += "str ( " + varNode->name + " ) ";
+                } else if (const auto* functionNode = dynamic_cast<const FunctionNode*>(expressions.at(i).get())) {
+                    code += generateFunctionCode(*functionNode);
+                } else {
+
                 }
             }
 
-            if(varDeclNode.constant) {
-                code += "        # Constant";
-            }
-
-            code += newLine();
             return code;
         }
 
@@ -972,32 +832,108 @@ private:
         JavaScript(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
 
         std::string generateCode() {
+            std::string precode = "";
+
             std::string code = "";
+
+            std::string mainCode = "";
+
+            std::string aftercode = "";
+
             for (const auto& statement : programNode->statements) {
                 if (auto functionNode = dynamic_cast<FunctionNode*>(statement.get())) {
-                    code += generateFunctionCode(*functionNode);
+                    mainCode += generateFunctionCode(*functionNode) + newLine();
                 } else if (auto varDeclNode = dynamic_cast<VarDeclarationNode*>(statement.get())) {
-                    code += generateVarDeclarationCode(*varDeclNode);
+                    mainCode += generateVarDeclarationCode(*varDeclNode);
                 } else if (auto commentNode = dynamic_cast<CommentNode*>(statement.get())) {
-                    code += generateCommentCode(*commentNode);
+                    mainCode += generateCommentCode(*commentNode);
                 }
             }
-            return code;
+
+            if(input) {
+                precode += "const readline = require('readline');\n"
+                           "const rl = readline.createInterface({\n"
+                           "    input: process.stdin,\n"
+                           "    output: process.stdout\n"
+                           "});\n\n"
+                           "function input(prompt) {\n"
+                           "    return new Promise((resolve) => {\n"
+                           "        rl.question(prompt, (userInput) => {\n"
+                           "            resolve(userInput);\n"
+                           "        });\n"
+                           "    });\n"
+                           "}\n\n";
+            }
+
+            if(async) {
+                aftercode += "\n"
+                                    "main().then(() => {\n"
+                                    "    rl.close();\n"
+                                    "});\n";
+
+                return precode + code + "async function main() {\n" + mainCode + "\n}\n" + aftercode;
+            } else {
+                return precode + code + mainCode + aftercode;
+            }
         }
 
     private:
         std::shared_ptr<ProgramNode> programNode;
+
+        bool input = false;
+        bool async = false;
 
         std::string newLine() {
             return ";\n";
         }
 
         std::string generateFunctionCode(const FunctionNode& functionNode) {
-            if (functionNode.funcName == "print") {
-                return generatePrintCode(functionNode);
+            switch(str2int(functionNode.funcName.c_str())) {
+                case str2int("print"): {
+                    return generatePrintCode(functionNode);
+                }
+                case str2int("input"): {
+                    return generateInputCode(functionNode);
+                }
+                case str2int("int"): {
+                    return generateIntCode(functionNode);
+                }
+                default:
+                    throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
+            }
+        }
+
+        std::string generateIntCode(const FunctionNode& printNode) {
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
             }
 
-            throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
+            std::string code = "parseInt ( ";
+
+            code += generateExpression(printNode.arguments);
+
+            code += ", 10 )";
+
+            std::cout << "\n\n" << code << "\n\n";
+
+            return code;
+        }
+
+        std::string generateInputCode(const FunctionNode& printNode) {
+            input = true;
+            async = true;
+
+            if (printNode.arguments.empty()) {
+                throw std::runtime_error("Error: print function requires at least one argument");
+            }
+
+            std::string code = "await input ( ";
+
+            code += generateExpression(printNode.arguments);
+
+            code += " )";
+
+            return code;
         }
 
         std::string generatePrintCode(const FunctionNode& printNode) {
@@ -1007,42 +943,9 @@ private:
 
             std::string code = "console.log ( ";
 
-            bool onlyNumber = true;
+            code += generateExpression(printNode.arguments);
 
-            for (size_t i = 0; i < printNode.arguments.size(); ++i) {
-                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += "\"" + strNode->value + "\"";
-                } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(printNode.arguments.at(i).get())) {
-                    code += std::to_string(intNode->value);
-                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments.at(i).get())) {
-                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
-                        code += " + ";
-                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
-                        code += " - ";
-                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
-                        code += " * ";
-                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
-                        code += " / ";
-                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
-                        code += " ( ";
-                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
-                        code += " ) ";
-                    }
-                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
-                    onlyNumber = false;
-                    if(boolNode->value == true) {
-                        code += "true";
-                    } else {
-                        code += "false";
-                    }
-                } else if (const auto* varNode = dynamic_cast<const VarNode*>(printNode.arguments.at(i).get())) {
-                    code += varNode->name;
-                } else {
-
-                }
-            }
-
-            code += " )" + newLine();
+            code += " )";
 
             return code;
         }
@@ -1064,22 +967,21 @@ private:
                 }
             }
 
-            for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
-                const std::unique_ptr<ASTNode>& expression = varDeclNode.expressions[i];
+            code += generateExpression(varDeclNode.expressions);
 
-                if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expressions[i].get())) {
+            code += newLine();
+            return code;
+        }
+
+        std::string generateExpression(const std::vector<std::unique_ptr<ASTNode>>& expressions) {
+            std::string code = "";
+
+            for (size_t i = 0; i < expressions.size(); ++i) {
+                if (const auto* strNode = dynamic_cast<const StringLiteralNode*>(expressions.at(i).get())) {
                     code += "\"" + strNode->value + "\"";
-                } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expressions[i].get())) {
+                } else if (const auto* intNode = dynamic_cast<const IntLiteralNode*>(expressions.at(i).get())) {
                     code += std::to_string(intNode->value);
-                } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expressions[i].get())) {
-                    if(boolNode->value == true) {
-                        code += "true";
-                    } else {
-                        code += "false";
-                    }
-                } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expressions[i].get())) {
-                    code += varNode->name;
-                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expression.get())) {
+                } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expressions.at(i).get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
                         code += " + ";
                     } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
@@ -1088,31 +990,26 @@ private:
                         code += " * ";
                     } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
                         code += " / ";
-                    } else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
+                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
                         code += " ( ";
                     } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
                         code += " ) ";
                     }
-                }
-            }
-
-            /*
-            if (auto strNode = dynamic_cast<const StringLiteralNode*>(varDeclNode.expression.get())) {
-                code += "\"" + strNode->value + "\"";
-            } else if (auto intNode = dynamic_cast<const IntLiteralNode*>(varDeclNode.expression.get())) {
-                code += std::to_string(intNode->value);
-            } else if (auto boolNode = dynamic_cast<const BoolLiteralNode*>(varDeclNode.expression.get())) {
-                if(boolNode->value == true) {
-                    code += "true";
+                } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
+                    if(boolNode->value == true) {
+                        code += "true";
+                    } else {
+                        code += "false";
+                    }
+                } else if (const auto* varNode = dynamic_cast<const VarNode*>(expressions.at(i).get())) {
+                    code += varNode->name;
+                } else if (const auto* functionNode = dynamic_cast<const FunctionNode*>(expressions.at(i).get())) {
+                    code += generateFunctionCode(*functionNode);
                 } else {
-                    code += "false";
-                }
-            } else if (auto varNode = dynamic_cast<const VarNode*>(varDeclNode.expression.get())) {
-                code += varNode->name;
-            }
-            */
 
-            code += newLine();
+                }
+            }
+
             return code;
         }
 
@@ -1125,9 +1022,9 @@ private:
                 }
             } else {
                 if(commentNode.comment[0] != ' ') {
-                    return "/* " + commentNode.comment + newLine() + "*/" + newLine();
+                    return "// " + commentNode.comment + newLine();
                 } else {
-                    return "/*" + commentNode.comment + newLine() + "*/" + newLine();
+                    return "//" + commentNode.comment + newLine();
                 }
             }
         }
@@ -1156,58 +1053,7 @@ private:
 
     void interpretVarDeclaration(const VarDeclarationNode& varDeclNode) {
         // Hier interpretierst du den Ausdruck, um den Wert zu ermitteln
-        std::string value;
-        std::string stringValue;
-
-        bool onlyNumber = true;
-
-        for (size_t i = 0; i < varDeclNode.expressions.size(); ++i) {
-            if (auto strNode = dynamic_cast<StringLiteralNode*>(varDeclNode.expressions[i].get())) {
-                onlyNumber = false;
-                value += strNode->value;
-                stringValue += strNode->value;
-            } else if (auto intNode = dynamic_cast<IntLiteralNode*>(varDeclNode.expressions[i].get())) {
-                value += std::to_string(intNode->value);
-                stringValue += std::to_string(intNode->value);
-            }  else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(varDeclNode.expressions[i].get())) {
-                onlyNumber = false;
-                if(boolNode->value == true) {
-                    value += "True";
-                    stringValue += "True";
-                } else {
-                    value += "False";
-                    stringValue += "False";
-                }
-            } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(varDeclNode.expressions[i].get())) {
-                    if(arithmeticOperationNode->operation == TokenType::PLUS) {
-                        value += "+";
-                    } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
-                        value += "-";
-                    } else if(arithmeticOperationNode->operation == TokenType::STAR) {
-                        value += "*";
-                    } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
-                        value += "/";
-                    }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
-                        value += "(";
-                    } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
-                        value += ")";
-                    }
-            } else if (auto varNode = dynamic_cast<VarNode*>(varDeclNode.expressions[i].get())) {
-                // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
-                if (variables.find(varNode->name) != variables.end()) {
-                    value += variables[varNode->name];
-                    stringValue += variables[varNode->name];
-                } else {
-                    throw std::runtime_error("Variable not found: " + varNode->name);
-                }
-            }
-        }
-
-        if(onlyNumber) {
-            value = evaluate(value);
-        } else {
-            value = stringValue;
-        }
+        std::string value = interpretExpressions(varDeclNode.expressions);
 
         if(variables.find(varDeclNode.varName) != variables.end()) {
             if(varDeclNode.first) {
@@ -1231,27 +1077,73 @@ private:
         }
     }
 
-    void interpretFunctionNode(const FunctionNode& functionNode) {
-        if(functionNode.funcName == "print") {
-            interpretPrintNode(functionNode);
+    std::variant<std::monostate, int, std::string, bool> interpretFunctionNode(const FunctionNode& functionNode) {
+        switch(str2int(functionNode.funcName.c_str())) {
+            case str2int("print"): {
+                interpretPrintFunction(functionNode);
+                return std::monostate{};
+            }
+            case str2int("input"): {
+                return interpretInputFunction(functionNode);
+            }
+            case str2int("int"): {
+                return interpretIntFunction(functionNode);
+            }
+            default:
+                return std::monostate{};
         }
     }
 
-    void interpretPrintNode(const FunctionNode& printNode) {
+    int interpretIntFunction(const FunctionNode& functionNode) {
+        std::string args = interpretExpressions(functionNode.arguments);
+
+        int val;
+
+        if(isNumber(args)) {
+            val = std::stoi(args);
+        } else {
+            val = 0;
+            throw std::runtime_error("NaN");
+        }
+
+        return val;
+    }
+
+    std::string interpretInputFunction(const FunctionNode& functionNode) {
+        std::string output = interpretExpressions(functionNode.arguments);
+
+        std::cout << output;
+
+        std::string input;
+
+        std::cin >> input;
+
+        std::cout << "\n";
+
+        return input;
+    }
+
+    void interpretPrintFunction(const FunctionNode& functionNode) {
+        std::string output = interpretExpressions(functionNode.arguments);
+
+        std::cout << output << std::endl;
+    }
+
+    std::string interpretExpressions(const std::vector<std::unique_ptr<ASTNode>>& expressions) {
         std::string output;
         std::string StringOutput;
 
         bool onlyNumber = true;
 
-        for (size_t i = 0; i < printNode.arguments.size(); ++i) {
-            if (auto strNode = dynamic_cast<StringLiteralNode*>(printNode.arguments[i].get())) {
+        for (size_t i = 0; i < expressions.size(); ++i) {
+            if (auto strNode = dynamic_cast<StringLiteralNode*>(expressions[i].get())) {
                 onlyNumber = false;
                 output += strNode->value;
                 StringOutput += strNode->value;
-            } else if (auto intNode = dynamic_cast<IntLiteralNode*>(printNode.arguments[i].get())) {
+            } else if (auto intNode = dynamic_cast<IntLiteralNode*>(expressions[i].get())) {
                 output += std::to_string(intNode->value);
                 StringOutput += std::to_string(intNode->value);;
-            } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(printNode.arguments[i].get())) {
+            } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
                 onlyNumber = false;
                 if(boolNode->value == true) {
                     output += "True";
@@ -1260,7 +1152,7 @@ private:
                     output += "False";
                     StringOutput += "False";
                 }
-            } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(printNode.arguments[i].get())) {
+            } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expressions[i].get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
                         output += "+";
                     } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
@@ -1274,20 +1166,40 @@ private:
                     } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
                         output += ")";
                     }
-            } else if (auto varNode = dynamic_cast<VarNode*>(printNode.arguments[i].get())) {
+            } else if (auto varNode = dynamic_cast<VarNode*>(expressions[i].get())) {
                 // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
                 if (variables.find(varNode->name) != variables.end()) {
 
                     onlyNumber = false;
 
-                    if(isNumber(variables[varNode->name])) {
-                        onlyNumber = true;
-                    }
-
                     output += variables[varNode->name]; // Wert aus der Map abrufen
                     StringOutput += variables[varNode->name];
                 } else {
                     throw std::runtime_error("Variable not found: " + varNode->name);
+                }
+            } else if (auto functionNode = dynamic_cast<FunctionNode*>(expressions[i].get())) {
+                // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
+                auto retVal = interpretFunctionNode(*functionNode);
+
+                if(std::holds_alternative<int>(retVal)) {
+                    output += std::to_string(std::get<int>(retVal));
+                } else if(std::holds_alternative<std::string>(retVal)) {
+                    onlyNumber = false;
+                    output += std::get<std::string>(retVal);
+                    StringOutput += std::get<std::string>(retVal);
+                } else if(std::holds_alternative<bool>(retVal)) {
+                    onlyNumber = false;
+                    bool bVal = std::get<bool>(retVal);
+                    if(bVal) {
+                        output += "True";
+                        StringOutput += "True";
+                    } else {
+                        output += "False";
+                        StringOutput += "False";
+                    }
+                } else if(std::holds_alternative<std::monostate>(retVal)) {
+                    onlyNumber = false;
+                    
                 }
             }
         }
@@ -1298,7 +1210,7 @@ private:
             output = StringOutput;
         }
 
-        std::cout << output << std::endl; // Ausgabe des Strings
+        return output;
     }
 };
 
@@ -1327,11 +1239,10 @@ int main(int argc, char* argv[]) {
     bool debugShowCompiled = false;
 
     // Operational flags
-    bool compile = true;
+    bool compile = false;
     bool interpret = true;
 
     // Compiler Languages
-    bool easy = true;
     bool python = false;
     bool javascript = false;
     bool GW_BASIC = false;
@@ -1359,8 +1270,8 @@ int main(int argc, char* argv[]) {
             compile = true;
         } else if (strcmp(argv[i], "-i") == 0) {
             interpret = true;
-        } else if (strcmp(argv[i], "--eas") == 0 || strcmp(argv[i], "--easy") == 0) {
-            easy = true;
+        } else if (strcmp(argv[i], "-dont-i") == 0) {
+            interpret = false;
         } else if (strcmp(argv[i], "--py") == 0 || strcmp(argv[i], "--python") == 0) {
             python = true;
         } else if (strcmp(argv[i], "--js") == 0 || strcmp(argv[i], "--javascript") == 0) {
@@ -1380,7 +1291,6 @@ int main(int argc, char* argv[]) {
             GW_BASIC = true;
             QuickBASIC = true;
         } else if (strcmp(argv[i], "--c-to-all") == 0 || strcmp(argv[i], "--compile-to-all") == 0) {
-            easy = true;
             python = true;
             javascript = true;
             GW_BASIC = true;
@@ -1489,29 +1399,11 @@ int main(int argc, char* argv[]) {
         std::cout << "\n";
     }
 
-    Interpreter interpreter;
+    std::shared_ptr<ProgramNode> programNodeShared = std::move(programNode);
 
-    if(interpret) {
-        interpreter.interpret(*programNode);
-    }
-
-    Compiler compiler(std::move(programNode));
+    Compiler compiler(programNodeShared);
 
     if(compile) {
-        if(easy) {
-            std::string compiled = compiler.generateCode(CompilerLanguages::Easy);
-            if(compiled.empty()) {
-                std::cerr << "Compiled Code is empty!!!";
-            }
-
-            writeToFile(outputDirectory + ".easy", compiled);
-
-            if(debugShowCompiled) {
-                std::cout << "\nCompiled Code to Easy:\n";
-                std::cout << compiled;
-            }
-        }
-
         if(python) {
             std::string compiled = compiler.generateCode(CompilerLanguages::Python);
             if(compiled.empty()) {
@@ -1540,63 +1432,15 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        /*
-        if(GW_BASIC) {
-            std::string compiled = compiler.generateCode(CompilerLanguages::GW_BASIC);
-            if(compiled.empty()) {
-                std::cerr << "Compiled Code is empty!!!";
-            }
-
-            writeToFile(outputDirectory + ".bas", compiled);
-
-            if(debugShowCompiled) {
-                std::cout << "\nCompiled Code to GW-BASIC:\n";
-                std::cout << compiled;
-            }
+        if(debugShowCompiled) {
+            std::cout << "\n!!!Compiled successfully!!!\n\n\n";
         }
+    }
 
-        if(QuickBASIC) {
-            std::string compiled = compiler.generateCode(CompilerLanguages::QuickBASIC);
-            if(compiled.empty()) {
-                std::cerr << "Compiled Code is empty!!!";
-            }
+    Interpreter interpreter;
 
-            writeToFile(outputDirectory + ".quick.bas", compiled);
-
-            if(debugShowCompiled) {
-                std::cout << "\nCompiled Code to QuickBASIC:\n";
-                std::cout << compiled;
-            }
-        }
-
-        if(Fortran77) {
-            std::string compiled = compiler.generateCode(CompilerLanguages::Fortran77);
-            if(compiled.empty()) {
-                std::cerr << "Compiled Code is empty!!!";
-            }
-
-            writeToFile(outputDirectory + ".f", compiled);
-
-            if(debugShowCompiled) {
-                std::cout << "\nCompiled Code to Fortran 77:\n";
-                std::cout << compiled;
-            }
-        }
-
-        if(Fortran90) {
-            std::string compiled = compiler.generateCode(CompilerLanguages::Fortran90);
-            if(compiled.empty()) {
-                std::cerr << "Compiled Code is empty!!!";
-            }
-
-            writeToFile(outputDirectory + ".f90", compiled);
-
-            if(debugShowCompiled) {
-                std::cout << "\nCompiled Code to Fortran 90:\n";
-                std::cout << compiled;
-            }
-        }
-        */
+    if(interpret) {
+        interpreter.interpret(*programNodeShared);
     }
 
     return 0;
