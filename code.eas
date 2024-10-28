@@ -1,2 +1,11 @@
-var inputTest = input("What is the height of Jonathan? ")
-print("Jonathan's height is " + str(inputTest))
+var i = 4
+var s = "H"
+var b = true
+
+print(i)
+print(str(i) + s)
+print(s)
+print(b)
+
+print(3)
+print(True)

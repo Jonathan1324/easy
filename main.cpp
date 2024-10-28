@@ -805,9 +805,9 @@ private:
                     }
                 } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
                     if(boolNode->value == true) {
-                        code += "str ( True ) ";
+                        code += "True";
                     } else {
-                        code += "str ( False ) ";
+                        code += "False";
                     }
                 } else if (const auto* varNode = dynamic_cast<const VarNode*>(expressions.at(i).get())) {
                     if(onlyNumber) {
@@ -1061,8 +1061,8 @@ private:
 
 class Interpreter {
 public:
-    std::unordered_map<std::string, std::string> variables;
-    std::unordered_map<std::string, std::string> constants;
+    std::unordered_map<std::string, std::variant<int, std::string, bool>> variables;
+    std::unordered_map<std::string, std::variant<int, std::string, bool>> constants;
 
     void interpret(const ProgramNode& programNode) {
         for (const auto& statement : programNode.statements) {
@@ -1080,28 +1080,36 @@ private:
     }
 
     void interpretVarDeclaration(const VarDeclarationNode& varDeclNode) {
-        // Hier interpretierst du den Ausdruck, um den Wert zu ermitteln
-        std::string value = interpretExpressions(varDeclNode.expressions);
+        // Interpret the expression to get the value
+        std::vector<std::variant<int, std::string, bool>> values = interpretExpressions(varDeclNode.expressions);
 
-        if(variables.find(varDeclNode.varName) != variables.end()) {
-            if(varDeclNode.first) {
+        // Check if the variable is already defined
+        if (variables.find(varDeclNode.varName) != variables.end()) {
+            if (varDeclNode.first) {
                 throw std::runtime_error("Variable has already been defined: " + varDeclNode.varName);
             }
 
-            if(constants.find(varDeclNode.varName) != variables.end() ) {
+            // Check if the variable is a constant
+            if (constants.find(varDeclNode.varName) != constants.end()) {
                 throw std::runtime_error("Constants can't be changed: " + varDeclNode.varName);
             }
         } else {
-            if(!varDeclNode.first) {
+            if (!varDeclNode.first) {
                 throw std::runtime_error("Variable hasn't been defined: " + varDeclNode.varName);
             }
         }
 
-        // Speichere den Wert in der Variablen Map
-        variables[varDeclNode.varName] = value;
+        // Store the value in the variables map
+        // Use the first value from the vector as the assigned value
+        if (!values.empty()) {
+            variables[varDeclNode.varName] = values[0];
+        } else {
+            throw std::runtime_error("No value provided for variable declaration: " + varDeclNode.varName);
+        }
 
-        if(varDeclNode.constant) {
-            constants[varDeclNode.varName] = varDeclNode.varName;
+        // If the variable is constant, store it in the constants map
+        if (varDeclNode.constant) {
+            constants[varDeclNode.varName] = variables[varDeclNode.varName];
         }
     }
 
@@ -1126,97 +1134,209 @@ private:
     }
 
     std::string interpretStrFunction(const FunctionNode& functionNode) {
-        std::string args = interpretExpressions(functionNode.arguments);
+        std::vector<std::variant<int, std::string, bool>> output = interpretExpressions(functionNode.arguments);
 
-        return args;
+        std::string result = std::visit([](auto&& arg) -> std::string {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, int>) {
+                return std::to_string(arg);
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                return arg;
+            } else if constexpr (std::is_same_v<T, bool>) {
+                return arg ? "True" : "False";
+            } else {
+                return "";
+            }
+        }, output[0]);
+
+        return result;
     }
 
     int interpretIntFunction(const FunctionNode& functionNode) {
-        std::string args = interpretExpressions(functionNode.arguments);
+        std::vector<std::variant<int, std::string, bool>> args = interpretExpressions(functionNode.arguments);
 
-        int val;
+        int val = 0;
 
-        if(isNumber(args)) {
-            val = std::stoi(args);
-        } else {
-            val = 0;
-            throw std::runtime_error("NaN");
-        }
+        std::visit([&val](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, int>) {
+                val = arg;  // Already an int, use it directly
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                if (isNumber(arg)) {
+                    val = std::stoi(arg);  // Convert string to int
+                } else {
+                    throw std::runtime_error("NaN");  // Not a number
+                }
+            } else if constexpr (std::is_same_v<T, bool>) {
+                val = arg ? 1 : 0;  // Convert bool to int
+            } else {
+                throw std::runtime_error("Unsupported type for int conversion");
+            }
+        }, args[0]);
 
         return val;
     }
 
     std::string interpretInputFunction(const FunctionNode& functionNode) {
-        std::string output = interpretExpressions(functionNode.arguments);
+        std::vector<std::variant<int, std::string, bool>> args = interpretExpressions(functionNode.arguments);
 
-        std::cout << output;
+        std::string prompt = std::visit([](auto&& arg) -> std::string {
+            if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, int>) {
+                return std::to_string(arg);
+            } else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string>) {
+                return arg;
+            } else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, bool>) {
+                return arg ? "True" : "False";
+            }
+        }, args[0]);
+
+        std::cout << prompt;
 
         std::string input;
-
         std::cin >> input;
-
         std::cout << "\n";
 
         return input;
     }
 
     void interpretPrintFunction(const FunctionNode& functionNode) {
-        std::string output = interpretExpressions(functionNode.arguments);
+        std::vector<std::variant<int, std::string, bool>> args = interpretExpressions(functionNode.arguments);
 
-        std::cout << output << std::endl;
+        std::visit([](auto&& arg) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, int>) {
+                std::cout << arg << std::endl;
+            } else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string>) {
+                std::cout << arg << std::endl;
+            } else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, bool>) {
+                std::cout << (arg ? "True" : "False") << std::endl;
+            }
+        }, args[0]);
     }
 
-    std::string interpretExpressions(const std::vector<std::unique_ptr<ASTNode>>& expressions) {
+    std::vector<std::variant<int, std::string, bool>> interpretExpressions(const std::vector<std::unique_ptr<ASTNode>>& expressions) {
+        std::vector<std::variant<int, std::string, bool>> expr = std::vector<std::variant<int, std::string, bool>>();
+
+        std::vector<std::variant<int, std::string, bool>> test = std::vector<std::variant<int, std::string, bool>>();
+
         std::string output;
         std::string StringOutput;
 
         bool onlyNumber = true;
         bool hasInt = false;
+        bool onlyBool = true;
+        bool hasBool = false;
 
         for (size_t i = 0; i < expressions.size(); ++i) {
+            if (auto commaNode = dynamic_cast<CommaNode*>(expressions[i].get())) {
+                // Push the current output to expr and reset
+                if (onlyNumber) {
+                    output = evaluate(output);
+                    expr.push_back(std::stoi(output));
+                } else if (onlyBool) {
+                    bool val = true;
+                    for(size_t i = 0; i < test.size(); ++i) {
+                        if(!std::get<bool>(test[i])) {
+                            val = false;
+                        }
+                    }
+                    expr.push_back(val);
+                } else {
+                    if (hasInt) {
+                        std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn INTs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
+                        expr.push_back(StringOutput);
+                    } else {
+                        expr.push_back(StringOutput);
+                    }
+                }
+
+                // Reset variables for the next expression
+                output.clear();
+                StringOutput.clear();
+                onlyNumber = true;
+                hasInt = false;
+                onlyBool = true;
+                hasBool = false;
+                continue;  // Skip to the next expression after a comma
+            }
+
             if (auto strNode = dynamic_cast<StringLiteralNode*>(expressions[i].get())) {
                 onlyNumber = false;
+                onlyBool = false;
                 output += strNode->value;
                 StringOutput += strNode->value;
+                test.push_back(strNode->value);
             } else if (auto intNode = dynamic_cast<IntLiteralNode*>(expressions[i].get())) {
                 hasInt = true;
+                onlyBool = false;
                 output += std::to_string(intNode->value);
                 StringOutput += std::to_string(intNode->value);;
+                test.push_back(intNode->value);
             } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
                 onlyNumber = false;
+                hasBool = true;
                 if(boolNode->value == true) {
                     output += "True";
                     StringOutput += "True";
+                    test.push_back(true);
                 } else {
                     output += "False";
                     StringOutput += "False";
+                    test.push_back(false);
                 }
             } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expressions[i].get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
                         output += "+";
+                        test.push_back("+");
                     } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
                         output += "-";
+                        test.push_back("-");
                     } else if(arithmeticOperationNode->operation == TokenType::STAR) {
                         output += "*";
+                        test.push_back("*");
                     } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
                         output += "/";
+                        test.push_back("/");
                     }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
                         output += "(";
+                        test.push_back("(");
                     } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
                         output += ")";
+                        test.push_back(")");
                     }
             } else if (auto varNode = dynamic_cast<VarNode*>(expressions[i].get())) {
                 // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
                 if (variables.find(varNode->name) != variables.end()) {
 
-                    if(isNumber(variables[varNode->name])) {
+                    if (std::holds_alternative<int>(variables[varNode->name])) {
                         hasInt = true;
-                    } else {
+                        onlyBool = false;
+                        int intValue = std::get<int>(variables[varNode->name]);
+                        output += std::to_string(intValue);
+                        StringOutput += std::to_string(intValue);
+                        test.push_back(intValue);
+                    } else if (std::holds_alternative<std::string>(variables[varNode->name])) {
                         onlyNumber = false;
+                        onlyBool = false;
+                        std::string strValue = std::get<std::string>(variables[varNode->name]);
+                        output += strValue;
+                        StringOutput += strValue;
+                        test.push_back(strValue);
+                    } else if (std::holds_alternative<bool>(variables[varNode->name])) {
+                        onlyNumber = false;
+                        hasBool = true;
+                        bool boolValue = std::get<bool>(variables[varNode->name]);
+                        if (boolValue) {
+                            output += "True";
+                            StringOutput += "True";
+                            test.push_back(true);
+                        } else {
+                            output += "False";
+                            StringOutput += "False";
+                            test.push_back(false);
+                        }
+                    } else {
+                        throw std::runtime_error("Unsupported type in variable: " + varNode->name);
                     }
-
-                    output += variables[varNode->name]; // Wert aus der Map abrufen
-                    StringOutput += variables[varNode->name];
                 } else {
                     throw std::runtime_error("Variable not found: " + varNode->name);
                 }
@@ -1226,40 +1346,55 @@ private:
 
                 if(std::holds_alternative<int>(retVal)) {
                     hasInt = true;
+                    onlyBool = false;
                     output += std::to_string(std::get<int>(retVal));
+                    test.push_back(std::get<int>(retVal));
                 } else if(std::holds_alternative<std::string>(retVal)) {
                     onlyNumber = false;
+                    onlyBool = false;
                     output += std::get<std::string>(retVal);
                     StringOutput += std::get<std::string>(retVal);
+                    test.push_back(std::get<std::string>(retVal));
                 } else if(std::holds_alternative<bool>(retVal)) {
                     onlyNumber = false;
+                    hasBool = true;
                     bool bVal = std::get<bool>(retVal);
                     if(bVal) {
                         output += "True";
                         StringOutput += "True";
+                        test.push_back(true);
                     } else {
                         output += "False";
                         StringOutput += "False";
+                        test.push_back(false);
                     }
                 } else if(std::holds_alternative<std::monostate>(retVal)) {
-                    onlyNumber = false;
                     
                 }
             }
         }
 
-        if(onlyNumber) {
+        if (onlyNumber) {
             output = evaluate(output);
+            expr.push_back(std::stoi(output));
+        } else if (onlyBool) {
+            bool val = true;
+            for(size_t i = 0; i < test.size(); ++i) {
+                if(!std::get<bool>(test[i])) {
+                    val = false;
+                }
+            }
+            expr.push_back(val);
         } else {
-            if(hasInt) {
+            if (hasInt) {
                 std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn INTs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
-                output = StringOutput;
+                expr.push_back(StringOutput);
             } else {
-                output = StringOutput;
+                expr.push_back(StringOutput);
             }
         }
 
-        return output;
+        return expr;
     }
 };
 

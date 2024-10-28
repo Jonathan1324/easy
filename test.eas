@@ -62,3 +62,6 @@ var str10 = "1 + 1 = "
 var OnePlusOne = 1 + 1
 
 print(str10 + str(OnePlusOne))
+
+var inputTest = input("What is your height? ")
+print("Your height is " + inputTest)
