@@ -32,7 +32,7 @@ var test3 = 6 / 2
 var test4 = test6 * test2
 var final = test4 + test3 - test6 * test2
 
-print("final: " + final)
+print("final: " + str(final))
 
 var int2 = (1 + 4) * 2
 
@@ -53,9 +53,9 @@ var result = int(val1) + int(val2)
 print(val1 + " + " + val2 + " = " + str(result))
 */
 
-test = "1 = " + 1
+test = "1 = " + str(1)
 
-print(test + " -- " + True)
+print(test + " -- " + str(True))
 
 var str10 = "1 + 1 = "
 
@@ -65,3 +65,15 @@ print(str10 + str(OnePlusOne))
 
 var inputTest = input("What is your height? ")
 print("Your height is " + inputTest)
+
+var i = 4
+var s = "H"
+var b = true
+
+print(i)
+print(str(b) + s)
+print(s)
+print(b)
+
+print(3)
+print(True)

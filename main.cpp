@@ -926,9 +926,11 @@ private:
                 throw std::runtime_error("Error: print function requires at least one argument");
             }
 
-            std::string code = generateExpression(printNode.arguments);
+            std::string code = "(";
 
-            code += ".toString()";
+            code += generateExpression(printNode.arguments);
+
+            code += ").toString()";
 
             return code;
         }
@@ -1241,7 +1243,7 @@ private:
                     }
                     expr.push_back(val);
                 } else {
-                    if (hasInt) {
+                    if (hasInt && hasBool) {
                         std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn INTs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
                         expr.push_back(StringOutput);
                     } else {
@@ -1388,6 +1390,9 @@ private:
         } else {
             if (hasInt) {
                 std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn INTs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
+                expr.push_back(StringOutput);
+            } else if (hasBool) {
+                std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn BOOLs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
                 expr.push_back(StringOutput);
             } else {
                 expr.push_back(StringOutput);
