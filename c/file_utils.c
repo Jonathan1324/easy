@@ -32,3 +32,15 @@ char* read_file(const char *filename) {
 
     return buffer;
 }
+
+void writeToFile(const char *filename, const char *content) {
+    FILE *outFile = fopen(filename, "w"); // Open file in write mode
+
+    if (!outFile) { // Check if file was opened successfully
+        fprintf(stderr, "Error writing to file: %s\n", filename);
+        return;
+    }
+
+    fputs(content, outFile); // Write content to file
+    fclose(outFile); // Close file
+}

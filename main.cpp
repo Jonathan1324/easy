@@ -1196,7 +1196,6 @@ private:
 
         std::string input;
         std::cin >> input;
-        std::cout << "\n";
 
         return input;
     }
@@ -1243,7 +1242,7 @@ private:
                     }
                     expr.push_back(val);
                 } else {
-                    if (hasInt && hasBool) {
+                    if (hasInt || hasBool) {
                         std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn INTs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
                         expr.push_back(StringOutput);
                     } else {
@@ -1402,18 +1401,6 @@ private:
         return expr;
     }
 };
-
-void writeToFile(const std::string& filename, const std::string& content) {
-    std::ofstream outFile(filename); // Datei im Schreibmodus öffnen
-
-    if (!outFile) { // Überprüfen, ob die Datei geöffnet werden konnte
-        std::cerr << "Error writing to file: " << filename << std::endl;
-        return;
-    }
-
-    outFile << content; // Inhalt in die Datei schreiben
-    outFile.close(); // Datei schließen
-}
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -1599,7 +1586,7 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Compiled Code is empty!!!";
             }
 
-            writeToFile(outputDirectory + ".py", compiled);
+            writeToFile((outputDirectory + ".py").c_str(), compiled.c_str());
 
             if(debugShowCompiled) {
                 std::cout << "\nCompiled Code to Python:\n";
@@ -1613,7 +1600,7 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Compiled Code is empty!!!";
             }
 
-            writeToFile(outputDirectory + ".js", compiled);
+            writeToFile((outputDirectory + ".js").c_str(), compiled.c_str());
 
             if(debugShowCompiled) {
                 std::cout << "\nCompiled Code to JavaScript:\n";
