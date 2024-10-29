@@ -13,17 +13,23 @@
 #include "c++\String.cpp"
 #include "c++\Arithmetic.cpp"
 
+#include "Tokenizer\tokenizeToken.cpp"
+
 #include "c\file_utils.h"
 
-#include "Tokenizer\tokenizeToken.cpp"
+extern "C" {
+    size_t add();
+}
+
+int mainTest() {
+    size_t result = add();  // Aufruf der Rust-Funktion
+    std::cout << "Das Ergebnis ist: " << "result" << std::endl;  // Ausgabe des Ergebnisses
+    return 0;
+}
 
 enum class CompilerLanguages {
     Python,
-    JavaScript,
-    GW_BASIC,
-    QuickBASIC,
-    Fortran77,
-    Fortran90
+    JavaScript
 };
 
 // Hauptfunktion zur Tokenisierung
@@ -638,14 +644,6 @@ public:
             return Python(programNode).generateCode();
         case CompilerLanguages::JavaScript:
             return JavaScript(programNode).generateCode();
-        case CompilerLanguages::GW_BASIC:
-            return "";
-        case CompilerLanguages::QuickBASIC:
-            return "";
-        case CompilerLanguages::Fortran77:
-            return "";
-        case CompilerLanguages::Fortran90:
-            return "";
         default:
             return "";
         }
@@ -1407,6 +1405,9 @@ int main(int argc, char* argv[]) {
         //Error::e1.printErrorMessage();
         return 1;
     }
+
+    mainTest();
+    return 0;
 
     // Debug flags
     bool debugShowFile = false;
