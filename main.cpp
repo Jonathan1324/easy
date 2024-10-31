@@ -23,7 +23,7 @@ extern "C" {
 
 int mainTest() {
     size_t result = add();  // Aufruf der Rust-Funktion
-    std::cout << "Das Ergebnis ist: " << "result" << std::endl;  // Ausgabe des Ergebnisses
+    std::cout << "Das Ergebnis ist: " << result << std::endl;  // Ausgabe des Ergebnisses
     return 0;
 }
 
