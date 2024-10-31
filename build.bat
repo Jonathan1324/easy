@@ -41,4 +41,4 @@ for %%f in (%C_DIR%\*.c) do (
 )
 
 :: MAIN
-%GCC% -o main.exe %OBJ_DIR%\*.obj -L"%RUST_DIR%\target\release" -l%RUST_LIB_NAME% -lws2_32 -ladvapi32 -lkernel32 -lntdll -lgcc -lstdc++ -static
+%GCC% -o main.exe %OBJ_DIR%\*.obj -L"%RUST_DIR%\target\release" -l%RUST_LIB_NAME% -static
