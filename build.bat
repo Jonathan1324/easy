@@ -17,11 +17,6 @@ set RUST_LIB_NAME=my_rust_lib
 :: Create the object directory if it does not exist
 if not exist %OBJ_DIR% mkdir %OBJ_DIR%
 
-:: Kompiliere die Rust-Bibliothek
-cd %RUST_DIR%
-cargo build --release
-cd ..
-
 :: Kompiliere die MAIN CPP Datei
 %GCC% -c -o %OBJ_DIR%\main.obj main.cpp
 
@@ -41,4 +36,4 @@ for %%f in (%C_DIR%\*.c) do (
 )
 
 :: MAIN
-%GCC% -o main.exe %OBJ_DIR%\*.obj -L"%RUST_DIR%\target\release" -l%RUST_LIB_NAME% -static
+%GCC% -o main.exe %OBJ_DIR%\*.obj -static

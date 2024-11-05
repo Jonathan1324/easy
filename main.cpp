@@ -17,16 +17,6 @@
 
 #include "c\file_utils.h"
 
-extern "C" {
-    size_t add();
-}
-
-int mainTest() {
-    size_t result = add();  // Aufruf der Rust-Funktion
-    std::cout << "Das Ergebnis ist: " << result << std::endl;  // Ausgabe des Ergebnisses
-    return 0;
-}
-
 enum class CompilerLanguages {
     Python,
     JavaScript
@@ -1215,7 +1205,7 @@ private:
     std::vector<std::variant<int, std::string, bool>> interpretExpressions(const std::vector<std::unique_ptr<ASTNode>>& expressions) {
         std::vector<std::variant<int, std::string, bool>> expr = std::vector<std::variant<int, std::string, bool>>();
 
-        std::vector<std::variant<int, std::string, bool>> test = std::vector<std::variant<int, std::string, bool>>();
+        std::vector<std::variant<int, std::string, bool>> sExpr = std::vector<std::variant<int, std::string, bool>>();
 
         std::string output;
         std::string StringOutput;
@@ -1233,8 +1223,8 @@ private:
                     expr.push_back(std::stoi(output));
                 } else if (onlyBool) {
                     bool val = true;
-                    for(size_t i = 0; i < test.size(); ++i) {
-                        if(!std::get<bool>(test[i])) {
+                    for(size_t i = 0; i < sExpr.size(); ++i) {
+                        if(!std::get<bool>(sExpr[i])) {
                             val = false;
                         }
                     }
@@ -1263,44 +1253,44 @@ private:
                 onlyBool = false;
                 output += strNode->value;
                 StringOutput += strNode->value;
-                test.push_back(strNode->value);
+                sExpr.push_back(strNode->value);
             } else if (auto intNode = dynamic_cast<IntLiteralNode*>(expressions[i].get())) {
                 hasInt = true;
                 onlyBool = false;
                 output += std::to_string(intNode->value);
                 StringOutput += std::to_string(intNode->value);;
-                test.push_back(intNode->value);
+                sExpr.push_back(intNode->value);
             } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
                 onlyNumber = false;
                 hasBool = true;
                 if(boolNode->value == true) {
                     output += "True";
                     StringOutput += "True";
-                    test.push_back(true);
+                    sExpr.push_back(true);
                 } else {
                     output += "False";
                     StringOutput += "False";
-                    test.push_back(false);
+                    sExpr.push_back(false);
                 }
             } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expressions[i].get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
                         output += "+";
-                        test.push_back("+");
+                        sExpr.push_back("+");
                     } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
                         output += "-";
-                        test.push_back("-");
+                        sExpr.push_back("-");
                     } else if(arithmeticOperationNode->operation == TokenType::STAR) {
                         output += "*";
-                        test.push_back("*");
+                        sExpr.push_back("*");
                     } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
                         output += "/";
-                        test.push_back("/");
+                        sExpr.push_back("/");
                     }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
                         output += "(";
-                        test.push_back("(");
+                        sExpr.push_back("(");
                     } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
                         output += ")";
-                        test.push_back(")");
+                        sExpr.push_back(")");
                     }
             } else if (auto varNode = dynamic_cast<VarNode*>(expressions[i].get())) {
                 // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
@@ -1312,14 +1302,14 @@ private:
                         int intValue = std::get<int>(variables[varNode->name]);
                         output += std::to_string(intValue);
                         StringOutput += std::to_string(intValue);
-                        test.push_back(intValue);
+                        sExpr.push_back(intValue);
                     } else if (std::holds_alternative<std::string>(variables[varNode->name])) {
                         onlyNumber = false;
                         onlyBool = false;
                         std::string strValue = std::get<std::string>(variables[varNode->name]);
                         output += strValue;
                         StringOutput += strValue;
-                        test.push_back(strValue);
+                        sExpr.push_back(strValue);
                     } else if (std::holds_alternative<bool>(variables[varNode->name])) {
                         onlyNumber = false;
                         hasBool = true;
@@ -1327,11 +1317,11 @@ private:
                         if (boolValue) {
                             output += "True";
                             StringOutput += "True";
-                            test.push_back(true);
+                            sExpr.push_back(true);
                         } else {
                             output += "False";
                             StringOutput += "False";
-                            test.push_back(false);
+                            sExpr.push_back(false);
                         }
                     } else {
                         throw std::runtime_error("Unsupported type in variable: " + varNode->name);
@@ -1347,13 +1337,13 @@ private:
                     hasInt = true;
                     onlyBool = false;
                     output += std::to_string(std::get<int>(retVal));
-                    test.push_back(std::get<int>(retVal));
+                    sExpr.push_back(std::get<int>(retVal));
                 } else if(std::holds_alternative<std::string>(retVal)) {
                     onlyNumber = false;
                     onlyBool = false;
                     output += std::get<std::string>(retVal);
                     StringOutput += std::get<std::string>(retVal);
-                    test.push_back(std::get<std::string>(retVal));
+                    sExpr.push_back(std::get<std::string>(retVal));
                 } else if(std::holds_alternative<bool>(retVal)) {
                     onlyNumber = false;
                     hasBool = true;
@@ -1361,11 +1351,11 @@ private:
                     if(bVal) {
                         output += "True";
                         StringOutput += "True";
-                        test.push_back(true);
+                        sExpr.push_back(true);
                     } else {
                         output += "False";
                         StringOutput += "False";
-                        test.push_back(false);
+                        sExpr.push_back(false);
                     }
                 } else if(std::holds_alternative<std::monostate>(retVal)) {
                     
@@ -1378,8 +1368,8 @@ private:
             expr.push_back(std::stoi(output));
         } else if (onlyBool) {
             bool val = true;
-            for(size_t i = 0; i < test.size(); ++i) {
-                if(!std::get<bool>(test[i])) {
+            for(size_t i = 0; i < sExpr.size(); ++i) {
+                if(!std::get<bool>(sExpr[i])) {
                     val = false;
                 }
             }
@@ -1405,9 +1395,6 @@ int main(int argc, char* argv[]) {
         //Error::e1.printErrorMessage();
         return 1;
     }
-
-    mainTest();
-    return 0;
 
     // Debug flags
     bool debugShowFile = false;
