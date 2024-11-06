@@ -1245,6 +1245,8 @@ private:
 
                     bool add = true;
                     bool minus = false;
+                    bool star = false;
+                    bool slash = false;
 
                     for (const auto& item : sExpr) {
                         if (std::holds_alternative<std::string>(item)) {
@@ -1253,13 +1255,23 @@ private:
                             if(add) {
                                 finalVal += value;
                                 add = false;
-                            } else if(minus) {
+                            }
+                            
+                            if(minus) {
                                 size_t pos = 0;
                                 // While the substring is found in the string
                                 while ((pos = finalVal.find(value, pos)) != std::string::npos) {
                                     finalVal.erase(pos, value.length());  // Erase the found substring
                                 }
                                 minus = false;
+                            }
+
+                            if(star) {
+                                star = false;
+                            }
+                            
+                            if(slash) {
+                                slash = false;
                             }
                         } else if (std::holds_alternative<Operation>(item)) {
                             Operation op = std::get<Operation>(item);
@@ -1272,8 +1284,15 @@ private:
                                     minus = true;
                                     break;
                                 case Operation::STAR:
+                                    //: TODO -- Repeat the first string by the number of occurrences of the characters in the second string --- Examples:
+                                    // ("wa aw raw war rwa" * "a" → "wa aw raw war rwawa aw raw war rwawa aw raw war rwawa aw raw war rwawa aw raw war rwa" (5 times because "a" is five times in the first string)
+                                    // "no banana here" * "na" → "no banana hereno banana here" (2 times because "na" is two times in the first string)
                                     break;
                                 case Operation::SLASH:
+                                    //: TODO -- Split string into array by seccond string as a delimiter --- Examples:
+                                    // ("wa aw raw war rwa" / " " → ["wa", "aw", "raw", "war", "rwa"] 
+                                    // "apple,banana,grape" / "," → ["apple", "banana", "grape"])
+
                                     break;
                                 case Operation::OPEN_PARENTHESIS:
                                     break;
