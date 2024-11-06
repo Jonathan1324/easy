@@ -77,3 +77,12 @@ print(b)
 
 print(3)
 print(True)
+
+print("Hello, " + "Worldy!" - "y")
+
+var Mt = "Line"
+var Me = 2
+
+print(Mt + " " + str(Me))
+
+print("abcdabcbaab " * "ab")

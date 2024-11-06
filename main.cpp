@@ -22,6 +22,9 @@ enum class CompilerLanguages {
     JavaScript
 };
 
+bool canCompileToPython = true;
+bool canCompileToJavaScript = true;
+
 enum class Operation {
     PLUS,
     MINUS,
@@ -1258,6 +1261,7 @@ private:
                             }
                             
                             if(minus) {
+                                std::cout << "\n\033[31;4m!!! Can't Compile because of '-str' !!!\n\033[0m";
                                 size_t pos = 0;
                                 // While the substring is found in the string
                                 while ((pos = finalVal.find(value, pos)) != std::string::npos) {
@@ -1267,10 +1271,28 @@ private:
                             }
 
                             if(star) {
+                                std::cout << "\n\033[31;4m!!! Can't Compile because of '*str' !!!\n\033[0m";
+                                size_t pos = 0;
+                                int times = 0;
+
+                                std::string currentVal = finalVal;
+                                
+                                while ((pos = finalVal.find(value, pos)) != std::string::npos) {
+                                    times += 1;
+                                    finalVal.erase(pos, value.length());
+                                }
+
+                                finalVal = "";
+
+                                for (int i = 0; i < times; i++) {
+                                    finalVal += currentVal;
+                                }
+
                                 star = false;
                             }
                             
                             if(slash) {
+                                std::cout << "\n\033[31;4m!!! Can't Compile because of '/str' !!!\n\033[0m";
                                 slash = false;
                             }
                         } else if (std::holds_alternative<Operation>(item)) {
@@ -1284,15 +1306,16 @@ private:
                                     minus = true;
                                     break;
                                 case Operation::STAR:
+                                    star = true;
                                     //: TODO -- Repeat the first string by the number of occurrences of the characters in the second string --- Examples:
                                     // ("wa aw raw war rwa" * "a" → "wa aw raw war rwawa aw raw war rwawa aw raw war rwawa aw raw war rwawa aw raw war rwa" (5 times because "a" is five times in the first string)
                                     // "no banana here" * "na" → "no banana hereno banana here" (2 times because "na" is two times in the first string)
                                     break;
                                 case Operation::SLASH:
+                                    slash = true;
                                     //: TODO -- Split string into array by seccond string as a delimiter --- Examples:
                                     // ("wa aw raw war rwa" / " " → ["wa", "aw", "raw", "war", "rwa"] 
                                     // "apple,banana,grape" / "," → ["apple", "banana", "grape"])
-
                                     break;
                                 case Operation::OPEN_PARENTHESIS:
                                     break;
