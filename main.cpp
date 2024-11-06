@@ -1244,15 +1244,22 @@ private:
                     std::string finalVal = "";
 
                     bool add = true;
+                    bool minus = false;
 
-                    for (size_t i = 0; i < sExpr.size(); ++i) {
-                        std::variant<int, std::string, bool, Operation> item = sExpr.at(i);
-
+                    for (const auto& item : sExpr) {
                         if (std::holds_alternative<std::string>(item)) {
                             const std::string& value = std::get<std::string>(item);
 
                             if(add) {
                                 finalVal += value;
+                                add = false;
+                            } else if(minus) {
+                                size_t pos = 0;
+                                // While the substring is found in the string
+                                while ((pos = finalVal.find(value, pos)) != std::string::npos) {
+                                    finalVal.erase(pos, value.length());  // Erase the found substring
+                                }
+                                minus = false;
                             }
                         } else if (std::holds_alternative<Operation>(item)) {
                             Operation op = std::get<Operation>(item);
@@ -1262,6 +1269,7 @@ private:
                                     add = true;
                                     break;
                                 case Operation::MINUS:
+                                    minus = true;
                                     break;
                                 case Operation::STAR:
                                     break;
