@@ -22,6 +22,15 @@ enum class CompilerLanguages {
     JavaScript
 };
 
+enum class Operation {
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    OPEN_PARENTHESIS,
+    CLOSE_PARENTHESIS
+};
+
 // Hauptfunktion zur Tokenisierung
 std::vector<Token> tokenize(const std::string& code) {
     std::vector<Token> tokens;
@@ -1205,7 +1214,7 @@ private:
     std::vector<std::variant<int, std::string, bool>> interpretExpressions(const std::vector<std::unique_ptr<ASTNode>>& expressions) {
         std::vector<std::variant<int, std::string, bool>> expr = std::vector<std::variant<int, std::string, bool>>();
 
-        std::vector<std::variant<int, std::string, bool>> sExpr = std::vector<std::variant<int, std::string, bool>>();
+        std::vector<std::variant<int, std::string, bool, Operation>> sExpr = std::vector<std::variant<int, std::string, bool, Operation>>();
 
         std::string output;
         std::string StringOutput;
@@ -1215,28 +1224,68 @@ private:
         bool onlyBool = true;
         bool hasBool = false;
 
+        auto addExpr = [&]() {
+            if (onlyNumber) {
+                output = evaluate(output);
+                expr.push_back(std::stoi(output));
+            } else if (onlyBool) {
+                bool value = true;
+                for(size_t i = 0; i < sExpr.size(); ++i) {
+                    if(!std::get<bool>(sExpr[i])) {
+                        value = false;
+                    }
+                }
+                expr.push_back(value);
+            } else {
+                if (hasInt || hasBool) {
+                    std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mConvert INTs to STRINGs before concatenating; Python requires consistent types!\033[0m\n\n";
+                    expr.push_back(StringOutput);
+                } else {
+                    std::string finalVal = "";
+
+                    bool add = true;
+
+                    for (size_t i = 0; i < sExpr.size(); ++i) {
+                        std::variant<int, std::string, bool, Operation> item = sExpr.at(i);
+
+                        if (std::holds_alternative<std::string>(item)) {
+                            const std::string& value = std::get<std::string>(item);
+
+                            if(add) {
+                                finalVal += value;
+                            }
+                        } else if (std::holds_alternative<Operation>(item)) {
+                            Operation op = std::get<Operation>(item);
+
+                            switch(op) {
+                                case Operation::PLUS:
+                                    add = true;
+                                    break;
+                                case Operation::MINUS:
+                                    break;
+                                case Operation::STAR:
+                                    break;
+                                case Operation::SLASH:
+                                    break;
+                                case Operation::OPEN_PARENTHESIS:
+                                    break;
+                                case Operation::CLOSE_PARENTHESIS:
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+
+                    expr.push_back(finalVal);
+                }
+            }
+        };
+
         for (size_t i = 0; i < expressions.size(); ++i) {
             if (auto commaNode = dynamic_cast<CommaNode*>(expressions[i].get())) {
                 // Push the current output to expr and reset
-                if (onlyNumber) {
-                    output = evaluate(output);
-                    expr.push_back(std::stoi(output));
-                } else if (onlyBool) {
-                    bool val = true;
-                    for(size_t i = 0; i < sExpr.size(); ++i) {
-                        if(!std::get<bool>(sExpr[i])) {
-                            val = false;
-                        }
-                    }
-                    expr.push_back(val);
-                } else {
-                    if (hasInt || hasBool) {
-                        std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn INTs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
-                        expr.push_back(StringOutput);
-                    } else {
-                        expr.push_back(StringOutput);
-                    }
-                }
+                addExpr();
 
                 // Reset variables for the next expression
                 output.clear();
@@ -1275,22 +1324,22 @@ private:
             } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expressions[i].get())) {
                     if(arithmeticOperationNode->operation == TokenType::PLUS) {
                         output += "+";
-                        sExpr.push_back("+");
+                        sExpr.push_back(Operation::PLUS);
                     } else if(arithmeticOperationNode->operation == TokenType::MINUS) {
                         output += "-";
-                        sExpr.push_back("-");
+                        sExpr.push_back(Operation::MINUS);
                     } else if(arithmeticOperationNode->operation == TokenType::STAR) {
                         output += "*";
-                        sExpr.push_back("*");
+                        sExpr.push_back(Operation::STAR);
                     } else if(arithmeticOperationNode->operation == TokenType::SLASH) {
                         output += "/";
-                        sExpr.push_back("/");
+                        sExpr.push_back(Operation::SLASH);
                     }  else if(arithmeticOperationNode->operation == TokenType::OPEN_PARENTHESIS) {
                         output += "(";
-                        sExpr.push_back("(");
+                        sExpr.push_back(Operation::OPEN_PARENTHESIS);
                     } else if(arithmeticOperationNode->operation == TokenType::CLOSE_PARENTHESIS) {
                         output += ")";
-                        sExpr.push_back(")");
+                        sExpr.push_back(Operation::CLOSE_PARENTHESIS);
                     }
             } else if (auto varNode = dynamic_cast<VarNode*>(expressions[i].get())) {
                 // Hier müsstest du sicherstellen, dass die Variable bereits existiert und ihren Wert abrufen
@@ -1363,28 +1412,7 @@ private:
             }
         }
 
-        if (onlyNumber) {
-            output = evaluate(output);
-            expr.push_back(std::stoi(output));
-        } else if (onlyBool) {
-            bool val = true;
-            for(size_t i = 0; i < sExpr.size(); ++i) {
-                if(!std::get<bool>(sExpr[i])) {
-                    val = false;
-                }
-            }
-            expr.push_back(val);
-        } else {
-            if (hasInt) {
-                std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn INTs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
-                expr.push_back(StringOutput);
-            } else if (hasBool) {
-                std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mTurn BOOLs into STRINGs before adding them, else it won't work in \033[1;34;4;40mPYTHON\033[0m\033[34;40m!\033[0m\n\n";
-                expr.push_back(StringOutput);
-            } else {
-                expr.push_back(StringOutput);
-            }
-        }
+        addExpr();
 
         return expr;
     }

@@ -1,1 +1,4 @@
-print("Hello, World!")
+print("Hello, " + "World!")
+var t = "Line"
+var e = 2
+print(t + " " + str(e))
