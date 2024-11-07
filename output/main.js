@@ -1,1 +1,1 @@
-console.log ( true -  ( true - true )  );
+console.log ( "Test = " + (1 + 2).toString() );

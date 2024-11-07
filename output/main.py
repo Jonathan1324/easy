@@ -1,1 +1,1 @@
-print ( True -  ( True - True )  )
+print ( "Test = " + str ( 1 + 2 ) )
