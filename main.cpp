@@ -1234,16 +1234,200 @@ private:
                 output = evaluate(output);
                 expr.push_back(std::stoi(output));
             } else if (onlyBool) {
-                bool value = true;
-                for(size_t i = 0; i < sExpr.size(); ++i) {
-                    if(!std::get<bool>(sExpr[i])) {
-                        value = false;
+                bool finalValue = true;
+
+                bool add = true;
+                bool minus = false;
+                bool star = false;
+                bool slash = false;
+
+                for (auto it = sExpr.begin(); it != sExpr.end(); ++it) {
+                    const auto &item = *it;
+
+                    if (std::holds_alternative<Operation>(item))
+                    {
+                        Operation op = std::get<Operation>(item);
+
+                        switch (op)
+                        {
+                        case Operation::PLUS:
+                            add = true;
+                            break;
+                        case Operation::MINUS:
+                            minus = true;
+                            break;
+                        case Operation::STAR:
+                            star = true;
+                            break;
+                        case Operation::SLASH:
+                            slash = true;
+                            break;
+                        case Operation::OPEN_PARENTHESIS:
+                            {
+                                int parenCount = 1;
+                                std::vector<std::unique_ptr<ASTNode>> subExpr;
+
+                                ++it;
+                                while (it != sExpr.end()) {
+                                    const auto &subItem = *it;
+                                    
+                                    if (std::holds_alternative<Operation>(subItem)) {
+                                        Operation nestedOp = std::get<Operation>(subItem);
+                                        if (nestedOp == Operation::OPEN_PARENTHESIS) {
+                                            parenCount++;  // Increment count for nested parentheses
+                                        } else if (nestedOp == Operation::CLOSE_PARENTHESIS) {
+                                            parenCount--;  // Decrement count when closing parenthesis is found
+                                        }
+                                    }
+
+                                    if (parenCount == 0) {
+                                        break;  // Exit loop when parentheses are balanced
+                                    }
+
+                                    if (std::holds_alternative<std::string>(subItem)) {
+                                        subExpr.push_back(std::make_unique<StringLiteralNode>(std::get<std::string>(subItem)));
+                                    } else if (std::holds_alternative<int>(subItem)) {
+                                        subExpr.push_back(std::make_unique<IntLiteralNode>(std::get<int>(subItem)));
+                                    } else if (std::holds_alternative<bool>(subItem)) {
+                                        subExpr.push_back(std::make_unique<BoolLiteralNode>(std::get<bool>(subItem)));
+                                    } else if (std::holds_alternative<Operation>(subItem)) {
+                                        Operation op = std::get<Operation>(subItem);
+
+                                        switch (op)
+                                        {
+                                        case Operation::PLUS:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::PLUS));
+                                            break;
+                                        case Operation::MINUS:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::MINUS));
+                                            break;
+                                        case Operation::STAR:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::STAR));
+                                            break;
+                                        case Operation::SLASH:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::SLASH));
+                                            break;
+                                        case Operation::OPEN_PARENTHESIS:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::OPEN_PARENTHESIS));
+                                            break;
+                                        case Operation::CLOSE_PARENTHESIS:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::CLOSE_PARENTHESIS));
+                                            break;
+                                        default:
+                                            break;
+                                        }
+                                    }
+
+                                    ++it;  // Move to next item
+                                }
+
+                                std::vector<std::variant<int, std::string, bool>> resultVector = interpretExpressions(subExpr);
+
+                                bool value;
+
+                                if (std::holds_alternative<std::string>(item)) {
+                                    std::string sValue = std::get<std::string>(item);
+                                    if(sValue.empty()) {
+                                        value = false;
+                                    } else {
+                                        value = true;
+                                    }
+                                } else if (std::holds_alternative<int>(item)) {
+                                    int iValue = std::get<int>(item);
+                                    if(iValue > 0) {
+                                        value = true;
+                                    } else {
+                                        value = false;
+                                    }
+                                } else if (std::holds_alternative<bool>(item)) {
+                                    value = std::get<bool>(item);
+                                }
+
+                                if (add)
+                                {
+                                    warnings.push_back("\n\033[31;4m!!! Can't Compile because of '+bool' !!!\n\033[0m");
+                                    if(value) {
+                                        finalValue = true;
+                                    }
+                                    add = false;
+                                }
+
+                                if (minus)
+                                {
+                                    warnings.push_back("\n\033[31;4m!!! Can't Compile because of '-bool' !!!\n\033[0m");
+                                    if(value) {
+                                        finalValue = false;
+                                    }
+                                    minus = false;
+                                }
+
+                                if (star)
+                                {
+                                    warnings.push_back("\n\033[31;4m!!! Can't Compile because of '*bool' !!!\n\033[0m");
+                                    if(!value) {
+                                        finalValue = false;
+                                    }
+                                    star = false;
+                                }
+
+                                if (slash)
+                                {
+                                    warnings.push_back("\n\033[31;4m!!! Can't Compile because of '/bool' !!!\n\033[0m");
+                                    if(!value) {
+                                        finalValue = true;
+                                    }
+                                    slash = false;
+                                }
+                                break;
+                            }
+                        case Operation::CLOSE_PARENTHESIS:
+                            break;
+                        default:
+                            break;
+                        }
+                    } else {
+                        int value = std::get<bool>(item);
+
+                        if (add)
+                        {
+                            if(value) {
+                                finalValue = true;
+                            }
+                            add = false;
+                        }
+
+                        if (minus)
+                        {
+                            warnings.push_back("\n\033[31;4m!!! Can't Compile because of '-bool' !!!\n\033[0m");
+                            if(value) {
+                                finalValue = false;
+                            }
+                            minus = false;
+                        }
+
+                        if (star)
+                        {
+                            warnings.push_back("\n\033[31;4m!!! Can't Compile because of '*bool' !!!\n\033[0m");
+                            if(!value) {
+                                finalValue = false;
+                            }
+                            star = false;
+                        }
+
+                        if (slash)
+                        {
+                            warnings.push_back("\n\033[31;4m!!! Can't Compile because of '/bool' !!!\n\033[0m");
+                            if(!value) {
+                                finalValue = true;
+                            }
+                            slash = false;
+                        }
                     }
                 }
-                expr.push_back(value);
+                expr.push_back(finalValue);
             } else {
                 if (hasInt || hasBool) {
-                    warnings.push_back("\n\033[31;4m!!! WARNING -- Can't Compile to Python!!!\033[0m\n\033[34;40mConvert INTs to STRINGs before concatenating; Python requires consistent types!\033[0m\n\n");
+                    warnings.push_back("\n\033[31;4m!!! WARNING -- Can't Compile to Python!!!\033[0m\n\033[34;40mConvert INTs to BOOLs before concatenating; Python requires consistent types!\033[0m\n\n");
                 }
 
                 std::string finalVal = "";

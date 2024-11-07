@@ -1,1 +1,1 @@
-console.log ( "Hello, " +  (  ( "Worlde" - "e" )  + "!" )  );
+console.log ( true -  ( true - true )  );

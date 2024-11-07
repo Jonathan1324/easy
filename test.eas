@@ -86,3 +86,6 @@ var Me = 2
 print(Mt + " " + str(Me))
 
 print("abcdabcbaab " * "ab")
+
+print("Hello, " + (("Worlde" - "e") + "!"))
+print(true - true)

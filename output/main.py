@@ -1,1 +1,1 @@
-print ( "Hello, " +  (  ( "Worlde" - "e" )  + "!" )  )
+print ( True -  ( True - True )  )
