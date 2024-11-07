@@ -9,6 +9,7 @@
 #include <set>
 #include <cstring>
 #include <variant>
+#include <algorithm>
 
 #include "c++\String.cpp"
 #include "c++\Arithmetic.cpp"
@@ -24,6 +25,8 @@ enum class CompilerLanguages {
 
 bool canCompileToPython = true;
 bool canCompileToJavaScript = true;
+
+std::vector<std::string> warnings = std::vector<std::string>();
 
 enum class Operation {
     PLUS,
@@ -1220,7 +1223,6 @@ private:
         std::vector<std::variant<int, std::string, bool, Operation>> sExpr = std::vector<std::variant<int, std::string, bool, Operation>>();
 
         std::string output;
-        std::string StringOutput;
 
         bool onlyNumber = true;
         bool hasInt = false;
@@ -1241,94 +1243,215 @@ private:
                 expr.push_back(value);
             } else {
                 if (hasInt || hasBool) {
-                    std::cout << "\n\033[31;4m!!! WARNING !!!\033[0m\n\033[34;40mConvert INTs to STRINGs before concatenating; Python requires consistent types!\033[0m\n\n";
-                    expr.push_back(StringOutput);
-                } else {
-                    std::string finalVal = "";
+                    warnings.push_back("\n\033[31;4m!!! WARNING -- Can't Compile to Python!!!\033[0m\n\033[34;40mConvert INTs to STRINGs before concatenating; Python requires consistent types!\033[0m\n\n");
+                }
 
-                    bool add = true;
-                    bool minus = false;
-                    bool star = false;
-                    bool slash = false;
+                std::string finalVal = "";
 
-                    for (const auto& item : sExpr) {
-                        if (std::holds_alternative<std::string>(item)) {
-                            const std::string& value = std::get<std::string>(item);
+                bool add = true;
+                bool minus = false;
+                bool star = false;
+                bool slash = false;
 
-                            if(add) {
-                                finalVal += value;
-                                add = false;
-                            }
-                            
-                            if(minus) {
-                                std::cout << "\n\033[31;4m!!! Can't Compile because of '-str' !!!\n\033[0m";
-                                size_t pos = 0;
-                                // While the substring is found in the string
-                                while ((pos = finalVal.find(value, pos)) != std::string::npos) {
-                                    finalVal.erase(pos, value.length());  // Erase the found substring
+                for (auto it = sExpr.begin(); it != sExpr.end(); ++it) {
+                    const auto &item = *it;
+
+                    if (std::holds_alternative<Operation>(item))
+                    {
+                        Operation op = std::get<Operation>(item);
+
+                        switch (op)
+                        {
+                        case Operation::PLUS:
+                            add = true;
+                            break;
+                        case Operation::MINUS:
+                            minus = true;
+                            break;
+                        case Operation::STAR:
+                            star = true;
+                            break;
+                        case Operation::SLASH:
+                            slash = true;
+                            //: TODO -- Split string into array by seccond string as a delimiter --- Examples:
+                            // ("wa aw raw war rwa" / " " → ["wa", "aw", "raw", "war", "rwa"]
+                            // "apple,banana,grape" / "," → ["apple", "banana", "grape"])
+                            break;
+                        case Operation::OPEN_PARENTHESIS:
+                            {
+                                int parenCount = 1;
+                                std::vector<std::unique_ptr<ASTNode>> subExpr;
+
+                                // Collect everything until matching CLOSE_PARENTHESIS
+                                ++it;  // Move past the OPEN_PARENTHESIS
+                                while (it != sExpr.end()) {
+                                    const auto &subItem = *it;
+                                    
+                                    if (std::holds_alternative<Operation>(subItem)) {
+                                        Operation nestedOp = std::get<Operation>(subItem);
+                                        if (nestedOp == Operation::OPEN_PARENTHESIS) {
+                                            parenCount++;  // Increment count for nested parentheses
+                                        } else if (nestedOp == Operation::CLOSE_PARENTHESIS) {
+                                            parenCount--;  // Decrement count when closing parenthesis is found
+                                        }
+                                    }
+
+                                    if (parenCount == 0) {
+                                        break;  // Exit loop when parentheses are balanced
+                                    }
+
+                                    if (std::holds_alternative<std::string>(subItem)) {
+                                        subExpr.push_back(std::make_unique<StringLiteralNode>(std::get<std::string>(subItem)));
+                                    } else if (std::holds_alternative<int>(subItem)) {
+                                        subExpr.push_back(std::make_unique<IntLiteralNode>(std::get<int>(subItem)));
+                                    } else if (std::holds_alternative<bool>(subItem)) {
+                                        subExpr.push_back(std::make_unique<BoolLiteralNode>(std::get<bool>(subItem)));
+                                    } else if (std::holds_alternative<Operation>(subItem)) {
+                                        Operation op = std::get<Operation>(subItem);
+
+                                        switch (op)
+                                        {
+                                        case Operation::PLUS:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::PLUS));
+                                            break;
+                                        case Operation::MINUS:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::MINUS));
+                                            break;
+                                        case Operation::STAR:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::STAR));
+                                            break;
+                                        case Operation::SLASH:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::SLASH));
+                                            break;
+                                        case Operation::OPEN_PARENTHESIS:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::OPEN_PARENTHESIS));
+                                            break;
+                                        case Operation::CLOSE_PARENTHESIS:
+                                            subExpr.push_back(std::make_unique<ArithmeticOperationNode>(TokenType::CLOSE_PARENTHESIS));
+                                            break;
+                                        default:
+                                            break;
+                                        }
+                                    }
+
+                                    ++it;  // Move to next item
                                 }
-                                minus = false;
-                            }
 
-                            if(star) {
-                                std::cout << "\n\033[31;4m!!! Can't Compile because of '*str' !!!\n\033[0m";
-                                size_t pos = 0;
-                                int times = 0;
+                                std::vector<std::variant<int, std::string, bool>> resultVector = interpretExpressions(subExpr);
 
-                                std::string currentVal = finalVal;
-                                
-                                while ((pos = finalVal.find(value, pos)) != std::string::npos) {
-                                    times += 1;
-                                    finalVal.erase(pos, value.length());
+                                std::string result = std::visit([](auto&& arg) -> std::string {
+                                    if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, int>) {
+                                        return std::to_string(arg);
+                                    } else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string>) {
+                                        return arg;
+                                    } else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, bool>) {
+                                        return arg ? "True" : "False";
+                                    }
+                                }, resultVector[0]);
+
+                                if (add) {
+                                    finalVal += result;
+                                    add = false;
                                 }
-
-                                finalVal = "";
-
-                                for (int i = 0; i < times; i++) {
-                                    finalVal += currentVal;
+                                if (minus) {
+                                    warnings.push_back("\n\033[31;4m!!! Can't Compile because of '-str' !!!\n\033[0m");
+                                    size_t pos = 0;
+                                    while ((pos = finalVal.find(result, pos)) != std::string::npos) {
+                                        finalVal.erase(pos, result.length());
+                                    }
+                                    minus = false;
                                 }
-
-                                star = false;
-                            }
-                            
-                            if(slash) {
-                                std::cout << "\n\033[31;4m!!! Can't Compile because of '/str' !!!\n\033[0m";
-                                slash = false;
-                            }
-                        } else if (std::holds_alternative<Operation>(item)) {
-                            Operation op = std::get<Operation>(item);
-
-                            switch(op) {
-                                case Operation::PLUS:
-                                    add = true;
-                                    break;
-                                case Operation::MINUS:
-                                    minus = true;
-                                    break;
-                                case Operation::STAR:
-                                    star = true;
-                                    //: TODO -- Repeat the first string by the number of occurrences of the characters in the second string --- Examples:
-                                    // ("wa aw raw war rwa" * "a" → "wa aw raw war rwawa aw raw war rwawa aw raw war rwawa aw raw war rwawa aw raw war rwa" (5 times because "a" is five times in the first string)
-                                    // "no banana here" * "na" → "no banana hereno banana here" (2 times because "na" is two times in the first string)
-                                    break;
-                                case Operation::SLASH:
-                                    slash = true;
+                                if (star) {
+                                    warnings.push_back("\n\033[31;4m!!! Can't Compile because of '*str' !!!\n\033[0m");
+                                    int times = 0;
+                                    size_t pos = 0;
+                                    std::string currentVal = finalVal;
+                                    while ((pos = finalVal.find(result, pos)) != std::string::npos) {
+                                        times++;
+                                        pos += result.length();
+                                    }
+                                    finalVal = "";
+                                    for (int i = 0; i < times; ++i) {
+                                        finalVal += currentVal;
+                                    }
+                                    star = false;
+                                }
+                                if (slash) {
+                                    warnings.push_back("\n\033[31;4m!!! Can't Compile because of '/str' !!!\n\033[0m");
                                     //: TODO -- Split string into array by seccond string as a delimiter --- Examples:
-                                    // ("wa aw raw war rwa" / " " → ["wa", "aw", "raw", "war", "rwa"] 
+                                    // ("wa aw raw war rwa" / " " → ["wa", "aw", "raw", "war", "rwa"]
                                     // "apple,banana,grape" / "," → ["apple", "banana", "grape"])
-                                    break;
-                                case Operation::OPEN_PARENTHESIS:
-                                    break;
-                                case Operation::CLOSE_PARENTHESIS:
-                                    break;
-                                default:
-                                    break;
+                                    slash = false;
+                                }
+                                break;
                             }
+                        case Operation::CLOSE_PARENTHESIS:
+                            break;
+                        default:
+                            break;
+                        }
+                    } else {
+                        std::string value;
+
+                        if (std::holds_alternative<std::string>(item)) {
+                            value = std::get<std::string>(item);
+                        } else if (std::holds_alternative<int>(item)) {
+                            int iValue = std::get<int>(item);
+                            value = std::to_string(iValue);
+                        } else if (std::holds_alternative<bool>(item)) {
+                            int bValue = std::get<bool>(item);
+                            value = bValue ? "True" : "False";
+                        }
+
+                        if (add)
+                        {
+                            finalVal += value;
+                            add = false;
+                        }
+
+                        if (minus)
+                        {
+                            warnings.push_back("\n\033[31;4m!!! Can't Compile because of '-str' !!!\n\033[0m");
+                            size_t pos = 0;
+                            // While the substring is found in the string
+                            while ((pos = finalVal.find(value, pos)) != std::string::npos)
+                            {
+                                finalVal.erase(pos, value.length()); // Erase the found substring
+                            }
+                            minus = false;
+                        }
+
+                        if (star)
+                        {
+                            warnings.push_back("\n\033[31;4m!!! Can't Compile because of '*str' !!!\n\033[0m");
+                            star = false;
+
+                            
+                            int times = 0;
+                            for (char ch : value) {
+                                times += std::count(finalVal.begin(), finalVal.end(), ch);
+                            }
+
+                            std::string result;
+                            for (int i = 0; i < times; ++i) {
+                                result += finalVal;
+                            }
+
+                            finalVal = result;
+                        }
+
+                        if (slash)
+                        {
+                            //: TODO -- Split string into array by seccond string as a delimiter --- Examples:
+                            // ("wa aw raw war rwa" / " " → ["wa", "aw", "raw", "war", "rwa"]
+                            // "apple,banana,grape" / "," → ["apple", "banana", "grape"])
+                            warnings.push_back("\n\033[31;4m!!! Can't Compile because of '/str' !!!\n\033[0m");
+                            slash = false;
                         }
                     }
-
-                    expr.push_back(finalVal);
                 }
+
+                expr.push_back(finalVal);
             }
         };
 
@@ -1339,7 +1462,6 @@ private:
 
                 // Reset variables for the next expression
                 output.clear();
-                StringOutput.clear();
                 onlyNumber = true;
                 hasInt = false;
                 onlyBool = true;
@@ -1351,24 +1473,20 @@ private:
                 onlyNumber = false;
                 onlyBool = false;
                 output += strNode->value;
-                StringOutput += strNode->value;
                 sExpr.push_back(strNode->value);
             } else if (auto intNode = dynamic_cast<IntLiteralNode*>(expressions[i].get())) {
                 hasInt = true;
                 onlyBool = false;
                 output += std::to_string(intNode->value);
-                StringOutput += std::to_string(intNode->value);;
                 sExpr.push_back(intNode->value);
             } else if (auto boolNode = dynamic_cast<BoolLiteralNode*>(expressions[i].get())) {
                 onlyNumber = false;
                 hasBool = true;
                 if(boolNode->value == true) {
                     output += "True";
-                    StringOutput += "True";
                     sExpr.push_back(true);
                 } else {
                     output += "False";
-                    StringOutput += "False";
                     sExpr.push_back(false);
                 }
             } else if (auto arithmeticOperationNode = dynamic_cast<const ArithmeticOperationNode*>(expressions[i].get())) {
@@ -1400,14 +1518,12 @@ private:
                         onlyBool = false;
                         int intValue = std::get<int>(variables[varNode->name]);
                         output += std::to_string(intValue);
-                        StringOutput += std::to_string(intValue);
                         sExpr.push_back(intValue);
                     } else if (std::holds_alternative<std::string>(variables[varNode->name])) {
                         onlyNumber = false;
                         onlyBool = false;
                         std::string strValue = std::get<std::string>(variables[varNode->name]);
                         output += strValue;
-                        StringOutput += strValue;
                         sExpr.push_back(strValue);
                     } else if (std::holds_alternative<bool>(variables[varNode->name])) {
                         onlyNumber = false;
@@ -1415,11 +1531,9 @@ private:
                         bool boolValue = std::get<bool>(variables[varNode->name]);
                         if (boolValue) {
                             output += "True";
-                            StringOutput += "True";
                             sExpr.push_back(true);
                         } else {
                             output += "False";
-                            StringOutput += "False";
                             sExpr.push_back(false);
                         }
                     } else {
@@ -1441,7 +1555,6 @@ private:
                     onlyNumber = false;
                     onlyBool = false;
                     output += std::get<std::string>(retVal);
-                    StringOutput += std::get<std::string>(retVal);
                     sExpr.push_back(std::get<std::string>(retVal));
                 } else if(std::holds_alternative<bool>(retVal)) {
                     onlyNumber = false;
@@ -1449,11 +1562,9 @@ private:
                     bool bVal = std::get<bool>(retVal);
                     if(bVal) {
                         output += "True";
-                        StringOutput += "True";
                         sExpr.push_back(true);
                     } else {
                         output += "False";
-                        StringOutput += "False";
                         sExpr.push_back(false);
                     }
                 } else if(std::holds_alternative<std::monostate>(retVal)) {
@@ -1645,6 +1756,7 @@ int main(int argc, char* argv[]) {
 
     Compiler compiler(programNodeShared);
 
+    // CURRENTLY ONLY CHANGING INTERPRETER
     if(compile) {
         if(python) {
             std::string compiled = compiler.generateCode(CompilerLanguages::Python);
@@ -1683,6 +1795,15 @@ int main(int argc, char* argv[]) {
 
     if(interpret) {
         interpreter.interpret(*programNodeShared);
+    }
+
+    std::vector<std::string> saidWarnings;
+
+    for(int i = 0; i < warnings.size(); i++) {
+        if (std::find(saidWarnings.begin(), saidWarnings.end(), warnings.at(i)) == saidWarnings.end()) {
+            saidWarnings.push_back(warnings.at(i));
+            std::cout << warnings.at(i) << std::endl;
+        }
     }
 
     return 0;

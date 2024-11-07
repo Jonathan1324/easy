@@ -57,6 +57,7 @@
         "string.h": "c",
         "variant": "cpp",
         "xtree": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "algorithm": "cpp"
     }
 }
