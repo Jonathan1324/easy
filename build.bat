@@ -36,4 +36,4 @@ for %%f in (%C_DIR%\*.c) do (
 )
 
 :: MAIN
-%GCC% -o main.exe %OBJ_DIR%\*.obj -static
+%GCC% -o easy.exe %OBJ_DIR%\*.obj -static
