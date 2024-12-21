@@ -1,0 +1,14 @@
+var testString = "Hello, world!"            // Declare a string variable "testString"
+const testString2 = 'Hello, world!'         // Declare a string constant "testString2"
+
+testString = "Hello, world a second time!"  // Change "testString" to "Hello, world a second time!"
+
+
+var testInt = 1                             // Declare an integer variable "testInt"
+const testInt2 = 2                          // Declare an integer constant "testInt2"
+
+testInt = testInt2 * 5 - 10 / 5             // Change "testInt" to the value of testInt2 multiplied by 2 and this value subtracted by 10 divided by 5, so its testInt2 * 5 - 10 / 5 = 2 * 5 - 10 / 5 = 10 - 2 = 8
+
+
+var testBool = true                         // Declare an boolean variable "testBool"
+const testBool2 = True                      // Declare an boolean constant "testBool2"

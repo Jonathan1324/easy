@@ -1,0 +1,7 @@
+var number1 = input("What is your first number? ")  // define "number1" as an input the user made to respond to "What is your first number? "
+
+var number2 = input("What is your second number? ") // define "number1" as an input the user made to respond to "What is your second number? "
+
+var result = int(number1) + int(number2)            // define "result" as the value of number1 and number2 turned into integers and then added
+
+print(number1 + " + " + number2 + " = " + str(result))    // print "{value of "number1"} + {value of "number2"} = {value of "result"}

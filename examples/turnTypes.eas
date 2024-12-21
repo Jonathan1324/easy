@@ -1,0 +1,5 @@
+var integerString = "5"                     // Declare an string variable "integerString"
+
+var realInt = int(integerString)            // Declare an int variable "realInt", which is "integerString" converted into an integer
+
+print(str(realInt))                         // Print "realInt" by turning it to an string and printing it
