@@ -212,18 +212,6 @@ public:
     }
 };
 
-class PrintNode : public ASTNode {
-public:
-    std::unique_ptr<ASTNode> expression; // Der Ausdruck, der ausgegeben werden soll
-
-    PrintNode(std::unique_ptr<ASTNode> expr) : expression(std::move(expr)) {}
-
-    void print(int indent = 0) const override {
-        std::cout << std::string(indent, ' ') << "PrintNode:\n";
-        expression->print(indent + 2); // Ausgabe des Ausdrucks
-    }
-};
-
 class FunctionNode : public ASTNode {
 public:
     std::string funcName;
@@ -469,45 +457,6 @@ private:
         return std::make_unique<VarDeclarationNode>(varName, std::move(expressions), var, isConst);
     }
 
-    // Eine Print-Anweisung parsen
-    std::unique_ptr<ASTNode> parsePrintStatement() {
-        advance(); // `print` Token überspringen
-        if (currentToken().type != TokenType::OPEN_PARENTHESIS) {
-            throw std::runtime_error("Expected '(' after 'print'");
-        }
-        advance(); // '(' Token überspringen
-
-        std::unique_ptr<ASTNode> expression;
-
-        if (currentToken().type == TokenType::STRING_LITERAL) {
-            expression = std::make_unique<StringLiteralNode>(currentToken().value);
-            advance(); // String literal Token überspringen
-        } else if (currentToken().type == TokenType::INT_LITERAL) {
-            expression = std::make_unique<StringLiteralNode>(currentToken().value);
-            advance(); // String literal Token überspringen
-        } else if (currentToken().type == TokenType::BOOL_LITERAL) {
-            if(currentToken().value == "true") {
-                expression = std::make_unique<StringLiteralNode>("True");
-            } else {
-                expression = std::make_unique<StringLiteralNode>("False");
-            }
-            advance(); // String literal Token überspringen
-        } else if (currentToken().type == TokenType::IDENTIFIER) { // Hier ID für die Variablen
-            expression = std::make_unique<VarNode>(currentToken().value);
-            advance(); // Identifier Token überspringen
-        } else {
-            throw std::runtime_error("Expected string literal or variable name");
-        }
-
-        if (currentToken().type != TokenType::CLOSE_PARENTHESIS) {
-            throw std::runtime_error("Expected ')' after argument");
-        }
-        
-        advance(); // ')' Token überspringen
-
-        return std::make_unique<PrintNode>(std::move(expression)); // Rückgabe eines neuen PrintNode
-    }
-
     std::unique_ptr<ASTNode> parseExpression() {
         if (currentToken().type == TokenType::STRING_LITERAL) {
             std::string stringValue = currentToken().value;
@@ -563,8 +512,8 @@ private:
     std::set<std::string> declaredVariables;
 
     void analyzeStatement(const std::unique_ptr<ASTNode>& statement) {
-        if (auto printNode = dynamic_cast<const PrintNode*>(statement.get())) {
-            analyzePrintNode(*printNode);
+        if (auto functionNode = dynamic_cast<const FunctionNode*>(statement.get())) {
+            analyzeFunctionNode(*functionNode);
         } else if (auto varDeclNode = dynamic_cast<const VarDeclarationNode*>(statement.get())) {
             analyzeVarDeclarationNode(*varDeclNode);
         } else if (auto intLiteralNode = dynamic_cast<const IntLiteralNode*>(statement.get())) {
@@ -623,19 +572,8 @@ private:
         }
     }
 
-    void analyzePrintNode(const PrintNode& printNode) {
-        // Überprüfen, ob der Ausdruck ein StringLiteralNode ist
-        if (auto strNode = dynamic_cast<const StringLiteralNode*>(printNode.expression.get())) {
-            // Der Ausdruck ist ein gültiger StringLiteralNode
-            return; // Nichts weiter zu tun
-        }
+    void analyzeFunctionNode(const FunctionNode& functionNode) {
 
-        // Überprüfen, ob der Ausdruck eine Variable (VarNode) ist
-        if (auto varNode = dynamic_cast<const VarNode*>(printNode.expression.get())) {
-            return; // Nichts weiter zu tun
-        }
-
-        throw std::runtime_error("Error: print statement must have a valid string expression.");
     }
 };
 
@@ -1861,63 +1799,7 @@ int main(int argc, char* argv[]) {
     std::vector<Token> tokens = tokenize(code);
 
     if(debugShowTokens) {
-        std::cout << "Tokens\n";
-        for (const auto& token : tokens) {
-            switch (token.type) {
-                case TokenType::STRING_LITERAL:
-                    std::cout << "Token: STRING_LITERAL, Value: \"" << token.value << "\"\n";
-                    break;
-                case TokenType::INT_LITERAL:
-                    std::cout << "Token: INT_LITERAL, Value: " << token.value << "\n";
-                    break;
-                case TokenType::BOOL_LITERAL:
-                    std::cout << "Token: BOOL_LITERAL, Value: " << token.value << "\n";
-                    break;
-                case TokenType::OPEN_PARENTHESIS:
-                    std::cout << "Token: OPEN_PARENTHESIS, Value: " << token.value << "\n";
-                    break;
-                case TokenType::CLOSE_PARENTHESIS:
-                    std::cout << "Token: CLOSE_PARENTHESIS, Value: " << token.value << "\n";
-                    break;
-                case TokenType::SEMICOLON:
-                    std::cout << "Token: SEMICOLON, Value: " << token.value << "\n";
-                    break;
-                case TokenType::NEWLINE:
-                    std::cout << "Token: NEWLINE, Value: " << token.value << "\n";
-                    break;
-                case TokenType::VAR:
-                    std::cout << "Token: VAR, Value: " << token.value << "\n";
-                    break;
-                case TokenType::CONST:
-                    std::cout << "Token: CONST, Value: " << token.value << "\n";
-                    break;
-                case TokenType::IDENTIFIER:
-                    std::cout << "Token: IDENTIFIER, Value: " << token.value << "\n";
-                    break;
-                case TokenType::ASSIGNMENT:
-                    std::cout << "Token: ASSIGNMENT, Value: " << token.value << "\n";
-                    break;
-                case TokenType::COMMENT:
-                    std::cout << "Token: COMMENT, Value: " << token.value << "\n";
-                    break;
-                case TokenType::PLUS:
-                    std::cout << "Token: PLUS, Value: " << token.value << "\n";
-                    break;
-                case TokenType::MINUS:
-                    std::cout << "Token: MINUS, Value: " << token.value << "\n";
-                    break;
-                case TokenType::STAR:
-                    std::cout << "Token: STAR, Value: " << token.value << "\n";
-                    break;
-                case TokenType::SLASH:
-                    std::cout << "Token: SLASH, Value: " << token.value << "\n";
-                    break;
-                default:
-                    std::cout << "Token: UNKNOWN, Value: " << token.value << "\n";
-                    break;
-            }
-        }
-        std::cout << "\n";
+        printTokens(tokens);
     }
 
     Parser parser(tokens);
