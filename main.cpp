@@ -1799,7 +1799,9 @@ int main(int argc, char* argv[]) {
     std::vector<Token> tokens = tokenize(code);
 
     if(debugShowTokens) {
+        std::cout << "Tokens\n";
         printTokens(tokens);
+        std::cout << "\n";
     }
 
     Parser parser(tokens);

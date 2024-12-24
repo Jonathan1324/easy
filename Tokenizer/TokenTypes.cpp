@@ -45,7 +45,6 @@ struct Token {
 };
 
 void printTokens(std::vector<Token> tokens) {
-    std::cout << "Tokens\n";
     for (const auto& token : tokens) {
         switch (token.type) {
             case TokenType::STRING_LITERAL:
@@ -101,5 +100,4 @@ void printTokens(std::vector<Token> tokens) {
                 break;
         }
     }
-    std::cout << "\n";
 }
