@@ -19,6 +19,10 @@
 
 #include "c\file_utils.h"
 
+
+#include "event\NewYear2025.cpp"
+
+
 enum class CompilerLanguages {
     Python,
     JavaScript
@@ -601,7 +605,10 @@ private:
         Python(const std::shared_ptr<ProgramNode>& programNode) : programNode(programNode) {}
 
         std::string generateCode() {
+            std::string precode = "";
+
             std::string code = "";
+
             for (const auto& statement : programNode->statements) {
                 if (auto functionNode = dynamic_cast<FunctionNode*>(statement.get())) {
                     code += generateFunctionCode(*functionNode) + newLine();
@@ -611,11 +618,58 @@ private:
                     code += generateCommentCode(*commentNode);
                 }
             }
-            return code;
+
+            if(os) {
+                precode += "import os\n";
+            }
+
+            if(random) {
+                precode += "import random\n";
+            }
+
+            if(time) {
+                precode += "import time\n\n";
+            }
+
+            if(show_fireworks) {
+                precode += "def show_fireworks():\n";
+                precode += "    colors = [\n";
+                precode += "        \"\\033[32m\",  # Green\n";
+                precode += "        \"\\033[33m\",  # Yellow\n";
+                precode += "        \"\\033[31m\",  # Red\n";
+                precode += "        \"\\033[34m\",  # Blue\n";
+                precode += "        \"\\033[35m\",  # Magenta\n";
+                precode += "        \"\\033[36m\"   # Cyan\n";
+                precode += "    ]\n\n";
+                precode += "    for _ in range(20):\n";
+                precode += "        os.system('cls' if os.name == 'nt' else 'clear')\n\n";
+                precode += "        x = random.randint(15, 65)  # Random x-coordinate\n";
+                precode += "        y = random.randint(5, 15)   # Random y-coordinate\n\n";
+                precode += "        # Select a single color for the current explosion\n";
+                precode += "        color = random.choice(colors)\n\n";
+                precode += "        # Draw the firework explosion\n";
+                precode += "        offsets = [\n";
+                precode += "            (-1, 0), (1, 0), (0, -1), (0, 1),\n";
+                precode += "            (-1, -1), (1, 1), (-1, 1), (1, -1),\n";
+                precode += "            (0, -2), (0, 2), (-2, 0), (2, 0)\n";
+                precode += "        ]\n\n";
+                precode += "        for dx, dy in offsets:\n";
+                precode += "            nx, ny = x + dx, y + dy\n";
+                precode += "            print(f\"\\033[{ny};{nx}H{color}*\\033[0m\", end=\"\")\n\n";
+                precode += "        print(\"\", flush=True)\n";
+                precode += "        time.sleep(0.3)\n\n";
+            }
+
+            return precode + code;
         }
 
     private:
         std::shared_ptr<ProgramNode> programNode;
+
+        bool os = false;
+        bool random = false;
+        bool time = false;
+        bool show_fireworks = false;
 
         std::string newLine() {
             return "\n";
@@ -635,6 +689,11 @@ private:
                 case str2int("str"): {
                     return generateStrCode(functionNode);
                 }
+
+                case str2int("happy2025"): {
+                    return generateNewYear2025Code(functionNode);
+                }
+
                 default:
                     throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
             }
@@ -692,6 +751,25 @@ private:
             code += generateExpression(printNode.arguments);
 
             code += " )";
+
+            return code;
+        }
+
+        std::string generateNewYear2025Code(const FunctionNode& printNode) {
+            os = true;
+            random = true;
+            time = true;
+            show_fireworks = true;
+
+            std::string code = "os.system('cls' if os.name == 'nt' else 'clear')\n";
+            code += "show_fireworks()\n";
+            code += "os.system('cls' if os.name == 'nt' else 'clear')\n";
+            code += "message = \"\\033[1;33mHappy New Year 2025!\\033[0m\"\n\n";
+            code += "width = 80\n";
+            code += "x = (width - len(message)) // 2\n";
+            code += "y = 12\n\n";
+            code += "print(f\"\\033[{y};{x}H{message}\", flush=True)\n";
+            code += "time.sleep(3)\n\n";
 
             return code;
         }
@@ -822,6 +900,42 @@ private:
                            "}\n\n";
             }
 
+            if(showFireworks) {
+                precode += "const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));\n"
+                           "async function showFireworks() {\n"
+                           "    const colors = [\n"
+                           "        \"\\x1b[32m\",  // Green\n"
+                           "        \"\\x1b[33m\",  // Yellow\n"
+                           "        \"\\x1b[31m\",  // Red\n"
+                           "        \"\\x1b[34m\",  // Blue\n"
+                           "        \"\\x1b[35m\",  // Magenta\n"
+                           "        \"\\x1b[36m\"   // Cyan\n"
+                           "    ];\n\n"
+                           "    for (let i = 0; i < 20; i++) {\n"
+                           "       // Clear the console\n"
+                           "        console.clear();\n\n"
+                           "        const x = Math.floor(Math.random() * (65 - 15 + 1)) + 15;  // Random x-coordinate\n"
+                           "        const y = Math.floor(Math.random() * (15 - 5 + 1)) + 5;    // Random y-coordinate\n\n"
+                           "        // Select a single color for the current explosion\n"
+                           "        const color = colors[Math.floor(Math.random() * colors.length)];\n\n"
+                           "        // Draw the firework explosion\n"
+                           "        const offsets = [\n"
+                           "            [-1, 0], [1, 0], [0, -1], [0, 1],\n"
+                           "            [-1, -1], [1, 1], [-1, 1], [1, -1],\n"
+                           "            [0, -2], [0, 2], [-2, 0], [2, 0]\n"
+                           "        ];\n\n"
+                           "        offsets.forEach(offset => {\n"
+                           "            const nx = x + offset[0]\n"
+                           "            const ny = y + offset[1];\n"
+                           "            // Move the cursor to the position and print a firework symbol\n"
+                           "            process.stdout.write(`\\x1b[${ny};${nx}H${color}*\\x1b[0m`);\n"
+                           "        });\n\n"
+                           "        // Wait for 300 milliseconds\n"
+                           "        await sleep(300);\n"
+                           "    }\n"
+                           "}\n";
+            }
+
             if(async) {
                 aftercode += "\n"
                                     "main().then(() => {\n"
@@ -839,6 +953,7 @@ private:
 
         bool input = false;
         bool async = false;
+        bool showFireworks = false;
 
         std::string newLine() {
             return ";\n";
@@ -858,6 +973,11 @@ private:
                 case str2int("str"): {
                     return generateStrCode(functionNode);
                 }
+
+                case str2int("happy2025"): {
+                    return generateNewYear2025Code(functionNode);
+                }
+
                 default:
                     throw std::runtime_error("Error: Function not defined - " + functionNode.funcName);
             }
@@ -919,6 +1039,23 @@ private:
 
             code += " )";
 
+            return code;
+        }
+
+        std::string generateNewYear2025Code(const FunctionNode& printNode) {
+            showFireworks = true;
+
+            string code = "console.clear();\n";
+            code += "await showFireworks();\n";
+            code += "console.clear();\n\n";
+            code += "const message = \"\\x1b[1;33mHappy New Year 2025!\\x1b[0m\";\n";
+            code += "const width = 80;\n";
+            code += "const x = Math.floor((width - message.length) / 2);\n";
+            code += "const y = 12;\n\n";
+            code += "// Move the cursor and display the message\n";
+            code += "process.stdout.write(`\\x1b[${y};${x}H${message}`);\n";
+            code += "await sleep(3000);\n";
+            
             return code;
         }
 
@@ -1072,6 +1209,12 @@ private:
             case str2int("str"): {
                 return interpretStrFunction(functionNode);
             }
+
+            case str2int("happy2025"): {
+                interpretEventFunction(functionNode);
+                return std::monostate{};
+            }
+            
             default:
                 return std::monostate{};
         }
@@ -1154,6 +1297,12 @@ private:
                 std::cout << (arg ? "True" : "False") << std::endl;
             }
         }, args[0]);
+    }
+
+    void interpretEventFunction(const FunctionNode& functionNode) {
+        happy2025();
+        
+        std::cout << "\n";
     }
 
     std::vector<std::variant<int, std::string, bool>> interpretExpressions(const std::vector<std::unique_ptr<ASTNode>>& expressions) {

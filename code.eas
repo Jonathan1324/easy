@@ -1,1 +1,2 @@
-print("Test = " + str(1 + 2))
+happy2025()
+print("your wish is: " + input("Enter your wish: "))
