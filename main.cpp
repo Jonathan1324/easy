@@ -96,15 +96,35 @@ std::vector<Token> tokenize(const std::string& code) {
             continue;
         }
 
+        Token controlorstructurToken = tokenizeControlStructures(code, i);
+        if (controlorstructurToken.type != TokenType::UNKNOWN) {
+            tokens.push_back(controlorstructurToken);
+            continue;
+        }
+
+        Token comparisonOperatorToken = tokenizeComparisonOperators(code, i);
+        if (comparisonOperatorToken.type != TokenType::UNKNOWN) {
+            tokens.push_back(comparisonOperatorToken);
+            continue;
+        }
+
+        Token logicalOperatorToken = tokenizeLogicalOperators(code, i);
+        if (logicalOperatorToken.type != TokenType::UNKNOWN) {
+            tokens.push_back(logicalOperatorToken);
+            continue;
+        }
+
         Token assignmentToken = tokenizeAssignment(code, i);
         if (assignmentToken.type != TokenType::UNKNOWN) {
             tokens.push_back(assignmentToken);
             continue;
         }
 
-        Token identifiertToken = tokenizeIdentifier(code, i);
-        if (identifiertToken.type != TokenType::UNKNOWN) {
-            tokens.push_back(identifiertToken);
+        // LOWEST
+
+        Token identifierToken = tokenizeIdentifier(code, i);
+        if (identifierToken.type != TokenType::UNKNOWN) {
+            tokens.push_back(identifierToken);
             continue;
         }
 
@@ -345,12 +365,6 @@ private:
             return nullptr;
         }
 
-        /*
-        if (currentToken().type == TokenType::PRINT) {
-            return parsePrintStatement();
-        }
-        */
-
         if (currentToken().type == TokenType::VAR) {
             return parseIdentifier(true, false);
         }
@@ -372,6 +386,18 @@ private:
         if (currentToken().type == TokenType::IDENTIFIER) {
             return parseIdentifier(false, false);
         }
+
+        if(currentToken().type == TokenType::IF) {
+            // DOESN'T WORK YET
+        }
+
+        if(currentToken().type == TokenType::WHILE) {
+            // DOESN'T WORK YET
+        }
+
+        if(currentToken().type == TokenType::FOR) {
+            // DOESN'T WORK YET
+        }   
 
         throw std::runtime_error("Unrecognized statement");
     }

@@ -43,6 +43,14 @@ Token tokenizeSymbol(const std::string& code, size_t& i) {
         ++i; // Index erhöhen
         return {TokenType::CLOSE_PARENTHESIS, ")"};
     }
+    if (code[i] == '{') {
+        ++i; // Index erhöhen
+        return {TokenType::OPEN_BRACE, "("};
+    }
+    if (code[i] == '}') {
+        ++i; // Index erhöhen
+        return {TokenType::CLOSE_BRACE, ")"};
+    }
     if (code[i] == ',') {
         ++i; // Index erhöhen
         return {TokenType::COMMA, ","};
@@ -57,6 +65,9 @@ Token tokenizeKeyword(const std::string& code, size_t& i) {
     } else if (code.substr(i, 5) == "const") {
         i += 5;
         return {TokenType::CONST, "const"};
+    } else if (code.substr(i, 4) == "func") {
+        i += 4;
+        return {TokenType::FUNC, "func"};
     }
     return {TokenType::UNKNOWN, ""};
 }
@@ -131,6 +142,66 @@ Token tokenizeArithmetic(const std::string& code, size_t& i) {
     } else if (code[i] == '/') {
         ++i; // Index erhöhen
         return {TokenType::SLASH, "/"};
+    }
+
+    return {TokenType::UNKNOWN, std::to_string(code[i])};
+}
+
+Token tokenizeLogicalOperators(const std::string& code, size_t& i) {
+    if (code[i] == '&' && code[i + 1] == '&') {
+        i+=2;
+        return {TokenType::AND, "AND"};
+    } else if (code[i] == '|' && code[i + 1] == '|') {
+        i+=2;
+        return {TokenType::OR, "OR"};
+    } else if (code[i] == '!') {
+        ++i;
+        return {TokenType::NOT, "!"};
+    }
+
+    return {TokenType::UNKNOWN, std::to_string(code[i])};
+}
+
+Token tokenizeComparisonOperators(const std::string& code, size_t& i) {
+    if (code[i] == '=' && code[i + 1] == '=') {
+        i+=2;
+        return {TokenType::EQUALS, "=="};
+    } else if (code[i] == '!' && code[i + 1] == '=') {
+        i+=2;
+        return {TokenType::NOT_EQUALS, "!="};
+    } else if (code[i] == '>') {
+        ++i;
+        return {TokenType::GREATER_THAN, ">"};
+    } else if (code[i] == '<') {
+        ++i;
+        return {TokenType::LESS_THAN, "<"};
+    } else if (code[i] == '>' && code[i + 1] == '=') {
+        i+=2;
+        return {TokenType::GREATER_OR_EQUAL, ">="};
+    } else if (code[i] == '<' && code[i + 1] == '=') {
+        i+=2;
+        return {TokenType::LESS_OR_EQUAL, "<="};
+    }
+
+    return {TokenType::UNKNOWN, std::to_string(code[i])};
+}
+
+Token tokenizeControlStructures(const std::string& code, size_t& i) {
+    if (code.substr(i, 2) == "if") {
+        i += 2;
+        return {TokenType::IF, "if"};
+    } else if (code.substr(i, 4) == "else") {
+        i += 4;
+        return {TokenType::ELSE, "else"};
+    } else if (code.substr(i, 5) == "while") {
+        i += 5;
+        return {TokenType::WHILE, "while"};
+    } else if (code.substr(i, 3) == "for") {
+        i += 3;
+        return {TokenType::FOR, "for"};
+    } else if (code.substr(i, 6) == "return") {
+        i += 6;
+        return {TokenType::RETURN, "return"};
     }
 
     return {TokenType::UNKNOWN, std::to_string(code[i])};

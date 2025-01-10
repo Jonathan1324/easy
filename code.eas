@@ -1,2 +1,3 @@
-happy2025()
-print("your wish is: " + input("Enter your wish: "))
+var test = true
+
+if(test == true)
